@@ -14,7 +14,6 @@
     <modules>
         <module>common-util</module>
         <module>service-util</module>
-        <module>model</module>
     </modules>
 
     <properties>
