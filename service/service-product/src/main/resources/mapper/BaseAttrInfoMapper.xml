@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper SYSTEM "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<!--namespace 定义接口的全路径-->
+<mapper namespace="com.atguigu.gmall.product.mapper.BaseAttrInfoMapper">
+
+
+    <!--根据分类Id 获取平台属性集合-->
+    <select id="selectAttrInfoList" resultMap="BaseAttrInfoMap">
+        select bai.id,bai.attr_name,bai.category_id,bai.category_level,
+        bav.id as base_value_id,bav.value_name,bav.attr_id
+        from base_attr_info bai
+        left join base_attr_value bav
+        on bai.id = bav.attr_id
+        <where>
+            <if test="category1Id != null and category1Id != 0">
+                or bai.category_level = 1 and bai.category_id = #{category1Id}
+            </if>
+            <if test="category2Id != null and category2Id != 0">
+                or bai.category_level = 2 and bai.category_id = #{category2Id}
+            </if>
+            <if test="category3Id != null and category3Id != 0">
+                or bai.category_level = 3 and bai.category_id = #{category3Id}
+            </if>
+            and bai.is_deleted = 0 and bav.is_deleted = 0
+        </where>
+        order by bai.category_level,bai.id
+    </select>
+
+    <resultMap id="BaseAttrInfoMap" type="com.atguigu.gmall.model.product.BaseAttrInfo" autoMapping="true">
+        <id column="id" property="id"></id>
+        <collection property="attrValueList" ofType="com.atguigu.gmall.model.product.BaseAttrValue" autoMapping="true">
+            <id column="base_value_id" property="id"></id>
+        </collection>
+    </resultMap>
+
+
+</mapper>

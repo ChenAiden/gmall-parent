@@ -12,6 +12,7 @@
         <module>common</module>
         <module>service</module>
         <module>model</module>
+        <module>server-gateway</module>
     </modules>
 
     <!--引入spring boot 父工程-->
