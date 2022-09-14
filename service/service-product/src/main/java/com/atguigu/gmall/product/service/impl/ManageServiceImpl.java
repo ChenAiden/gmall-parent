@@ -1,9 +1,11 @@
-package com.atguigu.gmall.product.service.Impl;
+package com.atguigu.gmall.product.service.impl;
 
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.mapper.*;
 import com.atguigu.gmall.product.service.ManageService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,24 @@ public class ManageServiceImpl implements ManageService {
 
     @Autowired
     private BaseAttrValueMapper baseAttrValueMapper;
+
+    @Autowired
+    private SpuInfoMapper spuInfoMapper;
+
+    @Autowired
+    private BaseSaleAttrMapper baseSaleAttrMapper;
+
+    @Autowired
+    private SpuImageMapper spuImageMapper;
+
+    @Autowired
+    private SpuPosterMapper spuPosterMapper;
+
+    @Autowired
+    private SpuSaleAttrMapper spuSaleAttrMapper;
+
+    @Autowired
+    private SpuSaleAttrValueMapper  spuSaleAttrValueMapper;
 
     /**
      * 查询二级分类
@@ -146,6 +166,87 @@ public class ManageServiceImpl implements ManageService {
         baseAttrInfo.setAttrValueList(baseAttrValueList);
 
         return baseAttrInfo;
+    }
+
+    /**
+     * spu分页列表
+     * admin/product/{page}/{limit}
+     * @param pageParam
+     * @param spuInfo
+     * @return
+     */
+    @Override
+    public IPage<SpuInfo> getSpuInfoPage(Page<SpuInfo> pageParam, SpuInfo spuInfo) {
+        QueryWrapper<SpuInfo> wrapper = new QueryWrapper<>();
+        wrapper.eq("category3_id",spuInfo.getCategory3Id());
+        wrapper.orderByDesc("id");
+
+                                             //参数一：分页条件      //参数二：过滤条件
+        Page<SpuInfo> spuInfoPage = spuInfoMapper.selectPage(pageParam, wrapper);
+        return spuInfoPage;
+    }
+
+    @Override
+    public List<BaseSaleAttr> baseSaleAttrList() {
+        List<BaseSaleAttr> baseSaleAttrList = baseSaleAttrMapper.selectList(null);
+        return baseSaleAttrList;
+    }
+
+    @Override
+    public void saveSpuInfo(SpuInfo spuInfo) {
+        //添加spuInfo表
+        spuInfoMapper.insert(spuInfo);
+
+        Long spuId = spuInfo.getId();
+
+        //添加spu图片
+        List<SpuImage> spuImageList = spuInfo.getSpuImageList();
+        //  判断不为空
+        if (!CollectionUtils.isEmpty(spuImageList)){
+            //  循环遍历
+            for (SpuImage spuImage : spuImageList) {
+                //  需要将spuId 赋值
+                spuImage.setSpuId(spuId);
+                //  保存spuImge
+                spuImageMapper.insert(spuImage);
+            }
+        }
+
+        //添加spu海报
+        List<SpuPoster> spuPosterList = spuInfo.getSpuPosterList();
+        //  判断不为空
+        if (!CollectionUtils.isEmpty(spuPosterList)){
+            //  循环遍历
+            for (SpuPoster spuPoster : spuPosterList) {
+                //  需要将spuId 赋值
+                spuPoster.setSpuId(spuId);
+                //  保存spuImge
+                spuPosterMapper.insert(spuPoster);
+            }
+        }
+
+        //添加spu销售属性表
+        List<SpuSaleAttr> spuSaleAttrList = spuInfo.getSpuSaleAttrList();
+        if (!CollectionUtils.isEmpty(spuSaleAttrList)){
+            for (SpuSaleAttr spuSaleAttr : spuSaleAttrList) {
+                spuSaleAttr.setSpuId(spuId);
+                spuSaleAttrMapper.insert(spuSaleAttr);
+
+                //添加spu销售属性值表
+                List<SpuSaleAttrValue> spuSaleAttrValueList = spuSaleAttr.getSpuSaleAttrValueList();
+                if (!CollectionUtils.isEmpty(spuSaleAttrValueList)){
+                    for (SpuSaleAttrValue spuSaleAttrValue : spuSaleAttrValueList) {
+                        spuSaleAttrValue.setSpuId(spuId);
+                        spuSaleAttrValue.setSaleAttrName(spuSaleAttr.getSaleAttrName());
+                        spuSaleAttrValueMapper.insert(spuSaleAttrValue);
+                    }
+                }
+            }
+        }
+
+
+
+
     }
 
 

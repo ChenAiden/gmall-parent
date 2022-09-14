@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>service-product</module>
+        <module>service-activity</module>
     </modules>
     <artifactId>service</artifactId>
 

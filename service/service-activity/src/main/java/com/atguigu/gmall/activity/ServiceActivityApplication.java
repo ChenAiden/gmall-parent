@@ -1,4 +1,4 @@
-package com.atguigu.gmall.product;
+package com.atguigu.gmall.activity;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -7,14 +7,13 @@ import org.springframework.context.annotation.ComponentScan;
 
 /**
  * @author Aiden
- * @create 2022-09-08 14:36
+ * @create 2022-09-13 19:29
  */
 @EnableDiscoveryClient
-@ComponentScan(basePackages = "com.atguigu.gmall")
 @SpringBootApplication
-public class ServiceProductApplication {
+@ComponentScan(basePackages = "com.atguigu.gmall")
+public class ServiceActivityApplication {
     public static void main(String[] args) {
-        SpringApplication.run(ServiceProductApplication.class,args);
+        SpringApplication.run(ServiceActivityApplication.class,args);
     }
 }
-
