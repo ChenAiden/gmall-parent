@@ -26,12 +26,23 @@
         order by bai.category_level,bai.id
     </select>
 
+
     <resultMap id="BaseAttrInfoMap" type="com.atguigu.gmall.model.product.BaseAttrInfo" autoMapping="true">
         <id column="id" property="id"></id>
         <collection property="attrValueList" ofType="com.atguigu.gmall.model.product.BaseAttrValue" autoMapping="true">
             <id column="base_value_id" property="id"></id>
         </collection>
     </resultMap>
+
+
+    <select id="getAttrList" resultMap="BaseAttrInfoMap">
+        select bai.id,bai.attr_name,bai.category_id,bai.category_level,
+               bav.id base_value_id,bav.attr_id,bav.value_name
+        from base_attr_info bai
+                 inner join sku_attr_value sav on sav.attr_id = bai.id
+                 inner join base_attr_value bav on sav.attr_id = bav.attr_id
+        where sav.sku_id = #{skuId} and sav.is_deleted = 0 and bai.is_deleted = 0 and bav.is_deleted = 0
+    </select>
 
 
 </mapper>

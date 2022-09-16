@@ -5,18 +5,38 @@
 
 
     <select id="selectSpuSaleAttrList" resultMap="SpuSaleAttr">
-        select sa.id,sa.spu_id,sa.base_sale_attr_id,sa.sale_attr_name,
-               sav.id value_id,sav.spu_id,sav.sale_attr_value_name
-        from spu_sale_attr sa
-        inner join spu_sale_attr_value sav
-        on sa.spu_id = sav.spu_id and sa.base_sale_attr_id = sav.base_sale_attr_id
-        where sa.spu_id=#{spu_id}
-        and sa.is_deleted = 0 and sav.is_deleted = 0
+        select ssa.id,ssa.spu_id,ssa.base_sale_attr_id,ssa.sale_attr_name,
+               ssav.id sale_attr_value_id,ssav.spu_id,ssav.sale_attr_value_name
+        from spu_sale_attr ssa
+        inner join spu_sale_attr_value ssav
+        on ssa.spu_id = ssav.spu_id and ssa.base_sale_attr_id = ssav.base_sale_attr_id
+        where ssa.spu_id=#{spu_id}
+        and ssa.is_deleted = 0 and ssav.is_deleted = 0
     </select>
+
+
     <resultMap id="SpuSaleAttr" type="com.atguigu.gmall.model.product.SpuSaleAttr" autoMapping="true">
         <id property="id" column="id"></id>
         <collection property="spuSaleAttrValueList" ofType="com.atguigu.gmall.model.product.SpuSaleAttrValue" autoMapping="true">
-            <id property="id" column="value_id"></id>
+            <id property="id" column="sale_attr_value_id"></id>
         </collection>
     </resultMap>
+
+
+<!--根据spuId,skuId 获取销售属性数据-->
+    <select id="getSpuSaleAttrListCheckBySku" resultMap="SpuSaleAttr">
+        select ssa.id,ssa.spu_id,ssa.base_sale_attr_id,ssa.sale_attr_name,
+               ssav.id sale_attr_value_id,ssav.sale_attr_value_name,
+               skav.sku_id,
+               if(skav.sku_id is null,0,1) is_checked
+        from spu_sale_attr ssa
+                 inner join spu_sale_attr_value ssav
+                            on ssa.spu_id = ssav.spu_id
+                                and ssa.base_sale_attr_id = ssav.base_sale_attr_id
+                 left join sku_sale_attr_value skav
+                           on skav.sale_attr_value_id = ssav.id and sku_id = #{skuId}
+        where ssa.spu_id = #{spuId}
+        order by ssa.id,ssav.id
+    </select>
+
 </mapper>
