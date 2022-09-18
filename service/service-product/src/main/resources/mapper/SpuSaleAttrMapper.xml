@@ -34,9 +34,10 @@
                             on ssa.spu_id = ssav.spu_id
                                 and ssa.base_sale_attr_id = ssav.base_sale_attr_id
                  left join sku_sale_attr_value skav
-                           on skav.sale_attr_value_id = ssav.id and sku_id = #{skuId}
+                           on skav.sale_attr_value_id = ssav.id
+                                and sku_id = #{skuId}
         where ssa.spu_id = #{spuId}
-        order by ssa.id,ssav.id
+        order by ssa.base_sale_attr_id,ssav.id
     </select>
 
 </mapper>

@@ -105,12 +105,23 @@ public class ProductApiController {
         return manageService.getSkuValueIdsMap(spuId);
     }
 
-    //GET/api/product/inner/getAttrList/{skuId} 根据skuId 获取平台属性数据
+
+    /**
+     * GET/api/product/inner/getAttrList/{skuId} 根据skuId 获取平台属性数据
+     * @param skuId
+     * @return
+     */
+    @ApiOperation("根据skuId 获取平台属性数据")
     @GetMapping("/getAttrList/{skuId}")
     public List<BaseAttrInfo> getAttrList(@PathVariable Long skuId){
 
         return manageService.getAttrList(skuId);
     }
+
+
+    //根据sku_name模糊查询
+    //GET/admin/activity/activityInfo/findSkuInfoByKeyword/{keyword}
+
 
 
 }

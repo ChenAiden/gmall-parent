@@ -16,6 +16,15 @@
         <maven.compiler.target>8</maven.compiler.target>
     </properties>
 
+
+    <dependencies>
+        <dependency>
+            <groupId>com.atguigu.gmall</groupId>
+            <artifactId>service-product-client</artifactId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
+
 <!--    打包插件，其中可以设置打包后的名称-->
     <build>
         <finalName>service-item</finalName>

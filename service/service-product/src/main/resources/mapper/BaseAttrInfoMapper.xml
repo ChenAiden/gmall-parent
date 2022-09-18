@@ -39,8 +39,8 @@
         select bai.id,bai.attr_name,bai.category_id,bai.category_level,
                bav.id base_value_id,bav.attr_id,bav.value_name
         from base_attr_info bai
-                 inner join sku_attr_value sav on sav.attr_id = bai.id
-                 inner join base_attr_value bav on sav.attr_id = bav.attr_id
+                 inner join base_attr_value bav on bav.attr_id = bai.id
+                 inner join sku_attr_value sav on sav.value_id = bav.id
         where sav.sku_id = #{skuId} and sav.is_deleted = 0 and bai.is_deleted = 0 and bav.is_deleted = 0
     </select>
 

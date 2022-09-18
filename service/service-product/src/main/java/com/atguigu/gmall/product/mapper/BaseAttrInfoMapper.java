@@ -27,6 +27,10 @@ public interface BaseAttrInfoMapper extends BaseMapper<BaseAttrInfo> {
                                           @Param("category3Id") Long category3Id);
 
 
-
+    /**
+     * GET/api/product/inner/getAttrList/{skuId} 根据skuId 获取平台属性数据
+     * @param skuId
+     * @return
+     */
     List<BaseAttrInfo> getAttrList(Long skuId);
 }

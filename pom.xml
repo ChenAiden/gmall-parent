@@ -13,6 +13,8 @@
         <module>service</module>
         <module>model</module>
         <module>server-gateway</module>
+        <module>service-client</module>
+        <module>web</module>
     </modules>
 
     <!--引入spring boot 父工程-->

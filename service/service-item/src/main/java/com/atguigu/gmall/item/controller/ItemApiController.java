@@ -28,7 +28,7 @@ public class ItemApiController {
     //GET/api/item/{skuId} 详情接口
     @ApiOperation("详情接口")
     @GetMapping("/{skuId}")
-    public Result getItem(@PathVariable Long skuId){
+    public Result<Map<String,Object>> getItem(@PathVariable Long skuId){
 
 //        ItemVo itemVo = itemService.getSkuInfo(skuId);
         Map<String,Object> result = itemService.getBySkuInfo(skuId);

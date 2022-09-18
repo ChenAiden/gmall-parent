@@ -11,7 +11,7 @@ import org.springframework.context.annotation.ComponentScan;
  * @author Aiden
  * @create 2022-09-15 22:11
  */
-@EnableFeignClients(basePackages = "com.atguigu.gmall")
+@EnableFeignClients(basePackages = {"com.atguigu.gmall"})
 @EnableDiscoveryClient
 @ComponentScan(basePackages = "com.atguigu.gmall")
 @SpringBootApplication(exclude = DataSourceAutoConfiguration.class)

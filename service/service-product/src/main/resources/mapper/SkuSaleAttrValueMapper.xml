@@ -5,13 +5,14 @@
 
 
     <select id="skuSaleAttrValueMapper" resultMap="spuValueIdsMap">
-        select group_concat( sk.sale_attr_value_id order by sp.base_sale_attr_id asc separator '|') value_ids
-             ,sk.sku_id
-        from sku_sale_attr_value sk
-                 join spu_sale_attr_value sp on sp.id = sk.sale_attr_value_id
-        where sk.spu_id = #{spuId}
-        group by sk.sku_id
+        select group_concat(skav.sale_attr_value_id order by spav.base_sale_attr_id asc separator '|') value_ids
+             ,skav.sku_id
+        from sku_sale_attr_value skav
+                 join spu_sale_attr_value spav on spav.id = skav.sale_attr_value_id
+        where skav.spu_id = #{spuId}
+        group by skav.sku_id
     </select>
 
     <resultMap id="spuValueIdsMap" type="java.util.Map" autoMapping="true"></resultMap>
+
 </mapper>

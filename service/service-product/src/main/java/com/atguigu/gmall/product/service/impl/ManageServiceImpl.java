@@ -1,6 +1,5 @@
 package com.atguigu.gmall.product.service.impl;
 
-import com.atguigu.gmall.common.execption.GmallException;
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.mapper.*;
 import com.atguigu.gmall.product.service.ManageService;
@@ -348,19 +347,17 @@ public class ManageServiceImpl implements ManageService {
     public SkuInfo getSkuInfo(Long skuId) {
         SkuInfo skuInfo = skuInfoMapper.selectById(skuId);
 
-        if (skuInfo.getIsSale() == 0) {
-            throw new GmallException("此商品还未上架", 201);
-        }
+//        if (skuInfo.getIsSale() == 0) {
+//            throw new GmallException("此商品还未上架", 201);
+//        }
 
         QueryWrapper<SkuImage> skuImageWrapper = new QueryWrapper<>();
         skuImageWrapper.eq("sku_id", skuId);
         List<SkuImage> skuImageList = skuImageMapper.selectList(skuImageWrapper);
 
         if (skuInfo != null) {
-
             skuInfo.setSkuImageList(skuImageList);
         }
-
         return skuInfo;
     }
 
@@ -420,6 +417,11 @@ public class ManageServiceImpl implements ManageService {
         return map;
     }
 
+    /**
+     * GET/api/product/inner/getAttrList/{skuId} 根据skuId 获取平台属性数据
+     * @param skuId
+     * @return
+     */
     @Override
     public List<BaseAttrInfo> getAttrList(Long skuId) {
 

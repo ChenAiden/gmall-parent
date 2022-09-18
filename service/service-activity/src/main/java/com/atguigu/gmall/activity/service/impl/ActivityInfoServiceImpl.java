@@ -1,9 +1,9 @@
 package com.atguigu.gmall.activity.service.impl;
 
 
+import com.atguigu.gmall.activity.mapper.ActivityInfoMapper;
 import com.atguigu.gmall.activity.mapper.ActivityRuleMapper;
 import com.atguigu.gmall.activity.mapper.ActivitySkuMapper;
-import com.atguigu.gmall.activity.mapper.ActivityInfoMapper;
 import com.atguigu.gmall.activity.service.ActivityInfoService;
 import com.atguigu.gmall.activity.service.ActivityRuleService;
 import com.atguigu.gmall.activity.service.ActivitySkuService;
@@ -12,6 +12,7 @@ import com.atguigu.gmall.model.activity.ActivityRule;
 import com.atguigu.gmall.model.activity.ActivityRuleVo;
 import com.atguigu.gmall.model.activity.ActivitySku;
 import com.atguigu.gmall.model.product.SkuInfo;
+import com.atguigu.gmall.product.client.ProductFeignClient;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -50,7 +51,8 @@ public class ActivityInfoServiceImpl extends ServiceImpl<ActivityInfoMapper, Act
     @Autowired
     private ActivitySkuService activitySkuService;
 
-
+    @Autowired
+    private ProductFeignClient productFeignClient;
 
 //    @Autowired
 //    private SkuInfoMapper skuInfoMapper;
@@ -101,6 +103,7 @@ public class ActivityInfoServiceImpl extends ServiceImpl<ActivityInfoMapper, Act
     public List<SkuInfo> findSkuInfoByKeyword(String keyword) {
 
         //根据sku_name模糊查询
+
         return null;
     }
 
