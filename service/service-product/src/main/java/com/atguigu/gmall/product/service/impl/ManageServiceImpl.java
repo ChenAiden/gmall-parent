@@ -1,20 +1,24 @@
 package com.atguigu.gmall.product.service.impl;
 
+import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.mapper.*;
 import com.atguigu.gmall.product.service.ManageService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Aiden
@@ -345,6 +349,160 @@ public class ManageServiceImpl implements ManageService {
 
     @Override
     public SkuInfo getSkuInfo(Long skuId) {
+//        return getInfoDB(skuId);
+
+//        return getSkuInfoRedis(skuId);
+
+        return getSkuInfoRedisson(skuId);
+    }
+
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    /*
+    从数据库中获取数据skuinfo和数据列表
+
+    1.定义key，从redis中获取数据
+        获取到了数据：返回
+     没有数据：
+        2.常数获取锁
+        没有获得锁自旋
+        得到锁，查询数据库
+
+        3.查询数据库
+        查到了存储到redis返回
+        没有查询存储null到redis  返回null
+
+        4.释放锁
+
+     2.兜底查询mysql
+
+     */
+    private SkuInfo getSkuInfoRedis(Long skuId) {
+        //尝试走redis
+        try {
+            //定义key   sku + skuId + info
+            String skuKey = RedisConst.SKUKEY_PREFIX + skuId + RedisConst.SKUKEY_SUFFIX;
+
+            SkuInfo skuInfo = (SkuInfo) redisTemplate.opsForValue().get(skuKey);
+
+            if (skuInfo == null) {
+                //从redis中没有获取数据 sku:lock
+                String lockKey = RedisConst.SKUKEY_PREFIX + RedisConst.SKULOCK_SUFFIX;
+                //获取锁值
+                String uuid = UUID.randomUUID().toString().replace("-", "");
+                //尝试获取锁
+                Boolean res = redisTemplate.opsForValue().setIfAbsent(lockKey, uuid, RedisConst.SKULOCK_EXPIRE_PX2, TimeUnit.SECONDS);
+
+                if (res) {
+                    //获取到了锁
+                    skuInfo = getSkuInfoDB(skuId);
+                    try {
+                        //判断是否获取到了mysql的数据
+                        if (skuInfo == null) {
+                            //mysql中也没有数据
+                            skuInfo = new SkuInfo();
+
+                            redisTemplate.opsForValue().set(skuKey, skuInfo, RedisConst.SKUKEY_TEMPORARY_TIMEOUT, TimeUnit.SECONDS);
+
+                            return skuInfo;
+                        } else {
+                            //存储到redis中
+                            redisTemplate.opsForValue().set(skuKey, skuInfo, RedisConst.SKUKEY_TIMEOUT, TimeUnit.SECONDS);
+
+                            return skuInfo;
+                        }
+                    } finally {
+                        //释放锁
+                        String script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+
+                        DefaultRedisScript redisScript = new DefaultRedisScript();
+
+                        redisScript.setResultType(Long.class);
+                        redisScript.setScriptText(script);
+
+                        redisTemplate.execute(redisScript, Arrays.asList(lockKey), uuid);
+                    }
+                } else {
+                    //没有获得锁，则进行自旋
+                    try {
+                        Thread.sleep(10);
+                        return getSkuInfoRedis(skuId);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } else {
+                return skuInfo;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        //操作redis的过程中出现异常，兜底方法
+        return getSkuInfoDB(skuId);
+    }
+
+
+    @Autowired
+    private RedissonClient redissonClient;
+
+    private SkuInfo getSkuInfoRedisson(Long skuId) {
+        try {
+            //定义数据key
+            String skuKey = RedisConst.SKUKEY_PREFIX + skuId + RedisConst.SKUKEY_SUFFIX;
+            //从redis中获取
+            SkuInfo skuInfo = (SkuInfo) redisTemplate.opsForValue().get(skuKey);
+
+            if (skuInfo == null) {
+
+                //获取锁，去mysql中查询
+                String lockKey = RedisConst.SKUKEY_PREFIX + RedisConst.SKUKEY_SUFFIX;
+
+                RLock lock = redissonClient.getLock(lockKey);
+
+                boolean res = lock.tryLock(RedisConst.SKULOCK_EXPIRE_PX1, RedisConst.SKULOCK_EXPIRE_PX2, TimeUnit.SECONDS);
+
+                if (res) {
+                    //查询数据库
+                    skuInfo = getSkuInfoDB(skuId);
+
+                    try {
+                        if (skuInfo == null) {
+                            skuInfo = new SkuInfo();
+
+                            redisTemplate.opsForValue().set(skuKey, skuInfo, RedisConst.SKUKEY_TEMPORARY_TIMEOUT, TimeUnit.SECONDS);
+                            return skuInfo;
+                        } else {
+                            redisTemplate.opsForValue().set(skuKey, skuInfo, RedisConst.SKUKEY_TIMEOUT, TimeUnit.SECONDS);
+                            return skuInfo;
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                } else {
+                    try {
+                        Thread.sleep(10);
+                        return getSkuInfoRedisson(skuId);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } else {
+                return skuInfo;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        return getSkuInfoDB(skuId);
+
+    }
+
+
+    //从数据库中获取skuinfo和图片信息
+    private SkuInfo getSkuInfoDB(Long skuId) {
         SkuInfo skuInfo = skuInfoMapper.selectById(skuId);
 
 //        if (skuInfo.getIsSale() == 0) {
@@ -409,9 +567,9 @@ public class ManageServiceImpl implements ManageService {
         Map<Object, Object> map = new HashMap<>();
         // key = 125|123 ,value = 37
         List<Map> mapList = skuSaleAttrValueMapper.skuSaleAttrValueMapper(spuId);
-        if (!CollectionUtils.isEmpty(mapList)){
+        if (!CollectionUtils.isEmpty(mapList)) {
             for (Map skuMap : mapList) {
-                map.put(skuMap.get("value_ids"),skuMap.get("sku_id"));
+                map.put(skuMap.get("value_ids"), skuMap.get("sku_id"));
             }
         }
         return map;
@@ -419,6 +577,7 @@ public class ManageServiceImpl implements ManageService {
 
     /**
      * GET/api/product/inner/getAttrList/{skuId} 根据skuId 获取平台属性数据
+     *
      * @param skuId
      * @return
      */
