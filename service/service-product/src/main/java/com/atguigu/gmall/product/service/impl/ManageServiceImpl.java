@@ -1,5 +1,6 @@
 package com.atguigu.gmall.product.service.impl;
 
+import com.atguigu.gmall.common.cache.GmallCache;
 import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.mapper.*;
@@ -7,6 +8,7 @@ import com.atguigu.gmall.product.service.ManageService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -285,6 +287,12 @@ public class ManageServiceImpl implements ManageService {
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void saveSkuInfo(SkuInfo skuInfo) {
+
+        //获取布隆过滤器
+        RBloomFilter<Object> rbloomFilter = redissonClient.getBloomFilter(RedisConst.SKU_BLOOM_FILTER);
+        //向布隆过滤器中添加值
+        rbloomFilter.add(skuInfo.getId());
+
         skuInfoMapper.insert(skuInfo);
 
         Long skuId = skuInfo.getId();
@@ -347,13 +355,14 @@ public class ManageServiceImpl implements ManageService {
         skuInfoMapper.updateById(skuInfo);
     }
 
+    @GmallCache(prefix = "sku:",suffix = ":info")
     @Override
     public SkuInfo getSkuInfo(Long skuId) {
-//        return getInfoDB(skuId);
+        return getSkuInfoDB(skuId);
 
 //        return getSkuInfoRedis(skuId);
 
-        return getSkuInfoRedisson(skuId);
+//        return getSkuInfoRedisson(skuId);
     }
 
     @Autowired
@@ -520,11 +529,27 @@ public class ManageServiceImpl implements ManageService {
     }
 
 
+    /**
+     * 获取商品价格
+     * 加锁解决缓存穿透问题
+     * @param skuId
+     * @return
+     */
     @Override
     public BigDecimal getSkuPrice(Long skuId) {
-        SkuInfo skuInfo = skuInfoMapper.selectById(skuId);
-        if (skuInfo != null) {
-            return skuInfo.getPrice();
+        //定义锁
+        String lockKey = RedisConst.SKUKEY_PREFIX + skuId + RedisConst.SKUKEY_PREFIX;
+
+        RLock lock = redissonClient.getLock(lockKey);
+        lock.lock();
+
+        try {
+            SkuInfo skuInfo = skuInfoMapper.selectById(skuId);
+            if (skuInfo != null) {
+                return skuInfo.getPrice();
+            }
+        } finally {
+            lock.unlock();
         }
         return new BigDecimal("0");
     }
@@ -536,6 +561,7 @@ public class ManageServiceImpl implements ManageService {
      * @param spuId
      * @return
      */
+    @GmallCache(prefix = "findSpuPosterBySpuId:")
     @Override
     public List<SpuPoster> findSpuPosterBySpuId(Long spuId) {
         QueryWrapper<SpuPoster> wrapper = new QueryWrapper<>();
@@ -551,17 +577,29 @@ public class ManageServiceImpl implements ManageService {
      * @param category3Id
      * @return
      */
+    @GmallCache(prefix = "getCategoryView:",suffix = ":info")
     @Override
     public BaseCategoryView getCategoryView(Long category3Id) {
 
         return baseCategoryViewMapper.selectById(category3Id);
     }
 
+    @GmallCache(prefix = "getSpuSaleAttrListCheckBySku:")
     @Override
     public List<SpuSaleAttr> getSpuSaleAttrListCheckBySku(Long skuId, Long spuId) {
+        //防止在缓存中存入一个24小时的不匹配数据
+        QueryWrapper<SkuSaleAttrValue> wrapper = new QueryWrapper<>();
+        wrapper.eq("sku_id",skuId);
+        wrapper.eq("spu_id",spuId);
+        List<SkuSaleAttrValue> skuSaleAttrValueList = skuSaleAttrValueMapper.selectList(wrapper);
+        if (CollectionUtils.isEmpty(skuSaleAttrValueList)){
+            return new ArrayList<>();
+        }
+
         return spuSaleAttrMapper.getSpuSaleAttrListCheckBySku(skuId, spuId);
     }
 
+    @GmallCache(prefix = "getSkuValueIdsMap:")
     @Override
     public Map getSkuValueIdsMap(Long spuId) {
         Map<Object, Object> map = new HashMap<>();
@@ -581,6 +619,7 @@ public class ManageServiceImpl implements ManageService {
      * @param skuId
      * @return
      */
+    @GmallCache(prefix = "getAttrList:")
     @Override
     public List<BaseAttrInfo> getAttrList(Long skuId) {
 

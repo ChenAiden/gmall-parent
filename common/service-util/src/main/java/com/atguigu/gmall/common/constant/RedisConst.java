@@ -18,6 +18,7 @@ public class RedisConst {
     //单位：秒 锁的持有时间
     public static final long SKULOCK_EXPIRE_PX2 = 10;
     public static final String SKULOCK_SUFFIX = ":lock";
+    public static final String LOCK_SUFFIX = "lock";
 
     public static final String USER_KEY_PREFIX = "user:";
     public static final String USER_CART_KEY_SUFFIX = ":cart";
@@ -37,5 +38,8 @@ public class RedisConst {
     //用户锁定时间 单位：秒
     public static final int SECKILL__TIMEOUT = 60 * 60 * 1;
 
+
+    //  布隆过滤器使用！
+    public static final String SKU_BLOOM_FILTER="sku:bloom:filter";
 
 }

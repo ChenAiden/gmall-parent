@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.atguigu.gmall.item.service.ItemService;
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.client.ProductFeignClient;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -26,10 +27,20 @@ public class ItemServiceImpl implements ItemService {
     @Autowired
     private ProductFeignClient productFeignClient;
 
+    @Autowired
+    private RedissonClient redissonClient;
+
     @Override
     public Map<String, Object> getBySkuInfo(Long skuId) {
 
         Map<String, Object> resultMap = new HashMap<>();
+
+
+//        //判断布隆过滤器中是否有这个skuid
+//        RBloomFilter<Long> rBloomFilter = redissonClient.getBloomFilter(RedisConst.SKU_BLOOM_FILTER);
+//
+//        if (!rBloomFilter.contains(skuId)) return resultMap;
+
 
         SkuInfo skuInfo = productFeignClient.getSkuInfo(skuId);
         resultMap.put("skuInfo",skuInfo);
