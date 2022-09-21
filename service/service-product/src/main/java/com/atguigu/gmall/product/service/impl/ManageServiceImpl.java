@@ -1,5 +1,6 @@
 package com.atguigu.gmall.product.service.impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.atguigu.gmall.common.cache.GmallCache;
 import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.model.product.*;
@@ -21,6 +22,7 @@ import org.springframework.util.CollectionUtils;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * @author Aiden
@@ -355,7 +357,7 @@ public class ManageServiceImpl implements ManageService {
         skuInfoMapper.updateById(skuInfo);
     }
 
-    @GmallCache(prefix = "sku:",suffix = ":info")
+    @GmallCache(prefix = "sku:", suffix = ":info")
     @Override
     public SkuInfo getSkuInfo(Long skuId) {
         return getSkuInfoDB(skuId);
@@ -532,6 +534,7 @@ public class ManageServiceImpl implements ManageService {
     /**
      * 获取商品价格
      * 加锁解决缓存穿透问题
+     *
      * @param skuId
      * @return
      */
@@ -561,7 +564,7 @@ public class ManageServiceImpl implements ManageService {
      * @param spuId
      * @return
      */
-    @GmallCache(prefix = "findSpuPosterBySpuId:")
+    @GmallCache(prefix = "SpuPosterBySpuId:")
     @Override
     public List<SpuPoster> findSpuPosterBySpuId(Long spuId) {
         QueryWrapper<SpuPoster> wrapper = new QueryWrapper<>();
@@ -577,29 +580,29 @@ public class ManageServiceImpl implements ManageService {
      * @param category3Id
      * @return
      */
-    @GmallCache(prefix = "getCategoryView:",suffix = ":info")
+    @GmallCache(prefix = "CategoryView:", suffix = ":info")
     @Override
     public BaseCategoryView getCategoryView(Long category3Id) {
 
         return baseCategoryViewMapper.selectById(category3Id);
     }
 
-    @GmallCache(prefix = "getSpuSaleAttrListCheckBySku:")
+    @GmallCache(prefix = "SpuSaleAttrListCheckBySku:")
     @Override
     public List<SpuSaleAttr> getSpuSaleAttrListCheckBySku(Long skuId, Long spuId) {
         //防止在缓存中存入一个24小时的不匹配数据
         QueryWrapper<SkuSaleAttrValue> wrapper = new QueryWrapper<>();
-        wrapper.eq("sku_id",skuId);
-        wrapper.eq("spu_id",spuId);
+        wrapper.eq("sku_id", skuId);
+        wrapper.eq("spu_id", spuId);
         List<SkuSaleAttrValue> skuSaleAttrValueList = skuSaleAttrValueMapper.selectList(wrapper);
-        if (CollectionUtils.isEmpty(skuSaleAttrValueList)){
+        if (CollectionUtils.isEmpty(skuSaleAttrValueList)) {
             return new ArrayList<>();
         }
 
         return spuSaleAttrMapper.getSpuSaleAttrListCheckBySku(skuId, spuId);
     }
 
-    @GmallCache(prefix = "getSkuValueIdsMap:")
+    @GmallCache(prefix = "SkuValueIdsMap:")
     @Override
     public Map getSkuValueIdsMap(Long spuId) {
         Map<Object, Object> map = new HashMap<>();
@@ -619,11 +622,78 @@ public class ManageServiceImpl implements ManageService {
      * @param skuId
      * @return
      */
-    @GmallCache(prefix = "getAttrList:")
+    @GmallCache(prefix = "AttrList:")
     @Override
     public List<BaseAttrInfo> getAttrList(Long skuId) {
 
         return baseAttrInfoMapper.getAttrList(skuId);
+    }
+
+    @GmallCache(prefix = "BaseCategoryList:",suffix = ":info")
+    @Override
+    public List<JSONObject> getBaseCategoryList() {
+        //创建外层集合，封装所有数据
+        List<JSONObject> list = new ArrayList<>();
+
+        //获取所有分类数据
+        List<BaseCategoryView> baseCategoryViewList = baseCategoryViewMapper.selectList(null);
+
+        Map<Long, List<BaseCategoryView>> category1Map = baseCategoryViewList.stream().collect(Collectors.groupingBy(BaseCategoryView::getCategory1Id));
+
+        int index = 0;
+        for (Map.Entry<Long, List<BaseCategoryView>> category1Entry : category1Map.entrySet()) {
+            //创建一级分类封装对象
+            JSONObject jsonObject1 = new JSONObject();
+
+            //获取一级对象的id
+            Long category1Id = category1Entry.getKey();
+            //获取一级下对应的二级分类集合
+            List<BaseCategoryView> category1List = category1Entry.getValue();
+
+            //一级分类名字（集合中的每个元素都是一个完整的对象，都有Category1Name这个参数）
+            String category1Name = category1List.get(0).getCategory1Name();
+
+            jsonObject1.put("index", ++index);
+            jsonObject1.put("categoryId", category1Id);
+            jsonObject1.put("categoryName", category1Name);
+
+            //对二级分类的集合实现分组
+            Map<Long, List<BaseCategoryView>> category2Map = category1List.stream().collect(Collectors.groupingBy(BaseCategoryView::getCategory2Id));
+
+            List<JSONObject> category2Child = new ArrayList<>();
+            for (Map.Entry<Long, List<BaseCategoryView>> category2Entry : category2Map.entrySet()) {
+                //创建二级分类封装对象
+                JSONObject jsonObject2 = new JSONObject();
+
+                //获取二级分类id
+                Long category2Id = category2Entry.getKey();
+                //获取二级对应的三级分类集合
+                List<BaseCategoryView> category2List = category2Entry.getValue();
+                //获取二级分类名字
+                String category2Name = category2List.get(0).getCategory2Name();
+                jsonObject2.put("categoryId", category2Id);
+                jsonObject2.put("categoryName", category2Name);
+
+                List<JSONObject> category3Child = new ArrayList<>();
+
+                for (BaseCategoryView baseCategoryView : category2List) {
+                    //创建三级分类封装对象
+                    JSONObject jsonObject3 = new JSONObject();
+                    jsonObject3.put("categoryId", baseCategoryView.getCategory3Id());
+                    jsonObject3.put("categoryName", baseCategoryView.getCategory3Name());
+
+                    category3Child.add(jsonObject3);
+                }
+
+                jsonObject2.put("categoryChild",category3Child);
+                category2Child.add(jsonObject2);
+            }
+
+            jsonObject1.put("categoryChild",category2Child);
+            list.add(jsonObject1);
+        }
+
+        return list;
     }
 
 

@@ -1,5 +1,7 @@
 package com.atguigu.gmall.product.controller.api;
 
+import com.alibaba.fastjson.JSONObject;
+import com.atguigu.gmall.common.result.Result;
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.service.ManageService;
 import io.swagger.annotations.Api;
@@ -20,11 +22,21 @@ import java.util.Map;
  */
 @Api("商品SPU/SKU远程调用接口")
 @RestController
-@RequestMapping("api/product/inner")
+@RequestMapping("api/product")
 public class ProductApiController {
 
     @Autowired
     private ManageService manageService;
+
+    //GET/api/product/getBaseCategoryList 获取首页分类数据
+    @ApiOperation("获取首页分类数据")
+    @GetMapping("/getBaseCategoryList")
+    public Result getBaseCategoryList(){
+        List<JSONObject> list = manageService.getBaseCategoryList();
+
+        return Result.ok(list);
+    }
+
 
     /**
      * GET/api/product/inner/getSkuInfo/{skuId}  根据skuId获取skuInfo信息
@@ -33,7 +45,7 @@ public class ProductApiController {
      * @return
      */
     @ApiOperation("根据skuId获取skuInfo信息")
-    @GetMapping("/getSkuInfo/{skuId}")
+    @GetMapping("/inner/getSkuInfo/{skuId}")
     public SkuInfo getSkuInfo(@PathVariable Long skuId) {
         return manageService.getSkuInfo(skuId);
     }
@@ -46,7 +58,7 @@ public class ProductApiController {
      * @return
      */
     @ApiOperation("根据skuId 获取最新的商品价格")
-    @GetMapping("/getSkuPrice/{skuId}")
+    @GetMapping("/inner/getSkuPrice/{skuId}")
     public BigDecimal getSkuPrice(@PathVariable Long skuId) {
 
         return manageService.getSkuPrice(skuId);
@@ -60,7 +72,7 @@ public class ProductApiController {
      * @return
      */
     @ApiOperation("根据spuId 获取海报数据")
-    @GetMapping("/findSpuPosterBySpuId/{spuId}")
+    @GetMapping("/inner/findSpuPosterBySpuId/{spuId}")
     public List<SpuPoster> findSpuPosterBySpuId(@PathVariable Long spuId) {
 
         return manageService.findSpuPosterBySpuId(spuId);
@@ -74,7 +86,7 @@ public class ProductApiController {
      * @return
      */
     @ApiOperation("根据三级分类id获取分类信息")
-    @GetMapping("/getCategoryView/{category3Id}")
+    @GetMapping("/inner/getCategoryView/{category3Id}")
     public BaseCategoryView getCategoryView(@PathVariable Long category3Id) {
 
         return manageService.getCategoryView(category3Id);
@@ -89,7 +101,7 @@ public class ProductApiController {
      * @return
      */
     @ApiOperation("根据spuId,skuId 获取销售属性数据")
-    @GetMapping("/getSpuSaleAttrListCheckBySku/{skuId}/{spuId}")
+    @GetMapping("/inner/getSpuSaleAttrListCheckBySku/{skuId}/{spuId}")
     public List<SpuSaleAttr> getSpuSaleAttrListCheckBySku(@PathVariable Long skuId,
                                                           @PathVariable Long spuId) {
         return manageService.getSpuSaleAttrListCheckBySku(skuId, spuId);
@@ -99,7 +111,7 @@ public class ProductApiController {
     //GET/api/product/inner/getSkuValueIdsMap/{spuId}  根据spuId 获取到销售属性值Id 与skuId 组成的数据集
 
     @ApiOperation("根据spuId 获取到销售属性值Id 与skuId 组成的数据集")
-    @GetMapping("/getSkuValueIdsMap/{spuId}")
+    @GetMapping("/inner/getSkuValueIdsMap/{spuId}")
     public Map getSkuValueIdsMap(@PathVariable Long spuId) {
 
         return manageService.getSkuValueIdsMap(spuId);
@@ -112,7 +124,7 @@ public class ProductApiController {
      * @return
      */
     @ApiOperation("根据skuId 获取平台属性数据")
-    @GetMapping("/getAttrList/{skuId}")
+    @GetMapping("/inner/getAttrList/{skuId}")
     public List<BaseAttrInfo> getAttrList(@PathVariable Long skuId){
 
         return manageService.getAttrList(skuId);

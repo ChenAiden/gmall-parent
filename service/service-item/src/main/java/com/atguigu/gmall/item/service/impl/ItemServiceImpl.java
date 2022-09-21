@@ -13,6 +13,8 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
 
 /**
@@ -30,6 +32,9 @@ public class ItemServiceImpl implements ItemService {
     @Autowired
     private RedissonClient redissonClient;
 
+    @Autowired
+    private ThreadPoolExecutor executor;
+
     @Override
     public Map<String, Object> getBySkuInfo(Long skuId) {
 
@@ -41,41 +46,68 @@ public class ItemServiceImpl implements ItemService {
 //
 //        if (!rBloomFilter.contains(skuId)) return resultMap;
 
+        //异步编排
+        CompletableFuture<SkuInfo> skuInfoFuture = CompletableFuture.supplyAsync(() -> {
+            SkuInfo skuInfo = productFeignClient.getSkuInfo(skuId);
+            resultMap.put("skuInfo", skuInfo);
+            return skuInfo;
+        }, executor);
 
-        SkuInfo skuInfo = productFeignClient.getSkuInfo(skuId);
-        resultMap.put("skuInfo",skuInfo);
+        CompletableFuture<Void> categoryViewFuture = skuInfoFuture.thenAcceptAsync(skuInfo -> {
+            if (skuInfo != null) {
+                BaseCategoryView categoryView = productFeignClient.getCategoryView(skuInfo.getCategory3Id());
+                resultMap.put("categoryView", categoryView);
+            }
+        }, executor);
 
-        if (skuInfo != null){
-            BaseCategoryView categoryView = productFeignClient.getCategoryView(skuInfo.getCategory3Id());
-            resultMap.put("categoryView",categoryView);
-        }
+        CompletableFuture<Void> skuAttrListFuture = CompletableFuture.runAsync(() -> {
+            List<BaseAttrInfo> attrList = productFeignClient.getAttrList(skuId);
+            if (!CollectionUtils.isEmpty(attrList)) {
 
-        List<BaseAttrInfo> attrList = productFeignClient.getAttrList(skuId);
-        if (!CollectionUtils.isEmpty(attrList)){
+                List<Map> mapList = attrList.stream().map(baseAttrInfo -> {
+                    //创建map封装数据
+                    Map<String, String> skuAttrMap = new HashMap<>();
+                    skuAttrMap.put("attrName", baseAttrInfo.getAttrName());
+                    skuAttrMap.put("attrValue", baseAttrInfo.getAttrValueList().get(0).getValueName());
+                    return skuAttrMap;
+                }).collect(Collectors.toList());
+                resultMap.put("skuAttrList", mapList);
+            }
+        }, executor);
 
-            List<Map> mapList = attrList.stream().map(baseAttrInfo -> {
-                //创建map封装数据
-                Map<String,String> skuAttrMap = new HashMap<>();
-                skuAttrMap.put("attrName",baseAttrInfo.getAttrName());
-                skuAttrMap.put("attrValue",baseAttrInfo.getAttrValueList().get(0).getValueName());
-                return skuAttrMap;
-            }).collect(Collectors.toList());
-            resultMap.put("skuAttrList",mapList);
-        }
+        CompletableFuture<Void> priceFuture = CompletableFuture.runAsync(() -> {
+            BigDecimal price = productFeignClient.getSkuPrice(skuId);
+            resultMap.put("price", price);
+        }, executor);
 
-        BigDecimal price = productFeignClient.getSkuPrice(skuId);
-        resultMap.put("price",price);
+        CompletableFuture<Void> spuPosterListFuture = skuInfoFuture.thenAcceptAsync(skuInfo -> {
+            List<SpuPoster> spuPosterList = productFeignClient.findSpuPosterBySpuId(skuInfo.getSpuId());
+            resultMap.put("spuPosterList", spuPosterList);
+        }, executor);
 
-        Long spuId = skuInfo.getSpuId();
-        List<SpuPoster> spuPosterList = productFeignClient.findSpuPosterBySpuId(spuId);
-        resultMap.put("spuPosterList",spuPosterList);
 
-        List<SpuSaleAttr> spuSaleAttrList = productFeignClient.getSpuSaleAttrListCheckBySku(skuId, spuId);
-        resultMap.put("spuSaleAttrList",spuSaleAttrList);
+        CompletableFuture<Void> spuSaleAttrListFuture = skuInfoFuture.thenAcceptAsync(skuInfo -> {
+            List<SpuSaleAttr> spuSaleAttrList = productFeignClient.getSpuSaleAttrListCheckBySku(skuId, skuInfo.getSpuId());
+            resultMap.put("spuSaleAttrList", spuSaleAttrList);
+        }, executor);
 
-        Map skuValueIdsMap = productFeignClient.getSkuValueIdsMap(spuId);
-        String valuesSkuJson = JSONObject.toJSONString(skuValueIdsMap);
-        resultMap.put("valuesSkuJson",valuesSkuJson);
+
+        CompletableFuture<Void> valuesSkuJsonFuture = skuInfoFuture.thenAcceptAsync(skuInfo -> {
+            Map skuValueIdsMap = productFeignClient.getSkuValueIdsMap(skuInfo.getSpuId());
+            String valuesSkuJson = JSONObject.toJSONString(skuValueIdsMap);
+            resultMap.put("valuesSkuJson", valuesSkuJson);
+        }, executor);
+
+        //多任务组合
+        CompletableFuture.allOf(
+                skuInfoFuture,
+                categoryViewFuture,
+                skuAttrListFuture,
+                priceFuture,
+                spuPosterListFuture,
+                spuSaleAttrListFuture,
+                valuesSkuJsonFuture
+        ).join();
 
         return resultMap;
     }
