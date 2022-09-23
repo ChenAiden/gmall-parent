@@ -23,6 +23,11 @@
             <artifactId>service-product-client</artifactId>
             <version>1.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.atguigu.gmall</groupId>
+            <artifactId>service-list-client</artifactId>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
 
 <!--    打包插件，其中可以设置打包后的名称-->

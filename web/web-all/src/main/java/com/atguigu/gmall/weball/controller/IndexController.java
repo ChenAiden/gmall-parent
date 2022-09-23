@@ -3,6 +3,7 @@ package com.atguigu.gmall.weball.controller;
 import com.atguigu.gmall.common.result.Result;
 import com.atguigu.gmall.product.client.ProductFeignClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ import java.io.IOException;
 @Controller
 public class IndexController {
 
+    @Qualifier("com.atguigu.gmall.product.client.ProductFeignClient")//自动注入按照id查找，我用来抑制远程调用报红
     @Autowired
     private ProductFeignClient productFeignClient;
 

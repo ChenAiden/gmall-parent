@@ -20,6 +20,10 @@ import java.util.Map;
 public interface ProductFeignClient {
 
 
+    @ApiOperation("根据品牌Id 获取品牌数据")
+    @GetMapping("/api/product/inner/getTrademark/{tmId}")
+    public BaseTrademark getTrademark(@PathVariable Long tmId);
+
     //GET/api/product/getBaseCategoryList 获取首页分类数据
     @ApiOperation("获取首页分类数据")
     @GetMapping("/api/product/getBaseCategoryList")

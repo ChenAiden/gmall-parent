@@ -18,44 +18,45 @@ public class Goods {
     @Id
     private Long id;
 
+    /**
+     * keyword:不分词
+     * index=false不进行索引
+     */
     @Field(type = FieldType.Keyword, index = false)
     private String defaultImg;
 
     //  es 中能分词的字段，这个字段数据类型必须是 text！keyword 不分词！
-    @Field(type = FieldType.Text, analyzer = "ik_max_word")
+    /**
+     * analyzer指定分词器 "ik_max_word"
+     * "analyzer": "ik_max_word",	//存数据的时候倒排索引时使用的分词器
+     * "search_analyzer": "ik_smart"	//查词时分词器	(这两个分词器最好相等，这样查词能查到，我感觉存词时的可以分的大一些)
+     */
+    @Field(type = FieldType.Text, analyzer = "ik_max_word",searchAnalyzer = "ik_smart")
     private String title;
 
     @Field(type = FieldType.Double)
     private Double price;
 
-    //  @Field(type = FieldType.Date)   6.8.1
+    //  @Field(type = FieldType.Date)   6.8.1   DateFormat.custom 指定格式
     @Field(type = FieldType.Date,format = DateFormat.custom,pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createTime; // 新品
 
     @Field(type = FieldType.Long)
     private Long tmId;
-
     @Field(type = FieldType.Keyword)
     private String tmName;
-
     @Field(type = FieldType.Keyword)
     private String tmLogoUrl;
-
     @Field(type = FieldType.Long)
     private Long category1Id;
-
     @Field(type = FieldType.Keyword)
     private String category1Name;
-
     @Field(type = FieldType.Long)
     private Long category2Id;
-
     @Field(type = FieldType.Keyword)
     private String category2Name;
-
     @Field(type = FieldType.Long)
     private Long category3Id;
-
     @Field(type = FieldType.Keyword)
     private String category3Name;
 

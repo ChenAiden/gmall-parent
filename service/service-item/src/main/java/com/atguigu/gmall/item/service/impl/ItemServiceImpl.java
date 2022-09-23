@@ -2,6 +2,7 @@ package com.atguigu.gmall.item.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
 import com.atguigu.gmall.item.service.ItemService;
+import com.atguigu.gmall.list.client.ListFeignClient;
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.client.ProductFeignClient;
 import org.redisson.api.RedissonClient;
@@ -34,6 +35,9 @@ public class ItemServiceImpl implements ItemService {
 
     @Autowired
     private ThreadPoolExecutor executor;
+
+    @Autowired
+    private ListFeignClient listFeignClient;
 
     @Override
     public Map<String, Object> getBySkuInfo(Long skuId) {
@@ -98,6 +102,12 @@ public class ItemServiceImpl implements ItemService {
             resultMap.put("valuesSkuJson", valuesSkuJson);
         }, executor);
 
+
+        //商品热度排名
+        CompletableFuture<Void> incrHotScoreFuture = CompletableFuture.runAsync(() -> {
+            listFeignClient.incrHotScore(skuId);
+        },executor);
+
         //多任务组合
         CompletableFuture.allOf(
                 skuInfoFuture,
@@ -106,8 +116,8 @@ public class ItemServiceImpl implements ItemService {
                 priceFuture,
                 spuPosterListFuture,
                 spuSaleAttrListFuture,
-                valuesSkuJsonFuture
-        ).join();
+                valuesSkuJsonFuture,
+                incrHotScoreFuture).join();
 
         return resultMap;
     }
