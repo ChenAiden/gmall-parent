@@ -28,34 +28,37 @@ public class IndexController {
     @Autowired
     private TemplateEngine templateEngine;
 
+
     /**
      * 首页数据显示，渲染
+     *
      * @param model
      * @return
      */
-    @GetMapping({"/","/index"})
-    public String index(Model model){
+    @GetMapping({"/", "/index"})
+    public String index(Model model) {
 
         Result result = productFeignClient.getBaseCategoryList();
-        model.addAttribute("list",result.getData());
+        model.addAttribute("list", result.getData());
 
         return "index/index";
     }
 
     /**
      * 第二种实现方式：使用nginx实现动态代理，动静分离
+     *
      * @return
      */
     @ResponseBody
     @GetMapping("/createIndex")
-    public Result createIndex(){
+    public Result createIndex() {
 
         //获取首页需要的数据
         Result result = productFeignClient.getBaseCategoryList();
 
         //创建上下文对象（上下文意味着数据）
         Context context = new Context();
-        context.setVariable("list",result.getData());
+        context.setVariable("list", result.getData());
 
         //创建流对象
         FileWriter writer = null;
@@ -66,8 +69,10 @@ public class IndexController {
         }
 
         //生成页面                           //模版     //数据  //输出位置
-        templateEngine.process("index/index",context,writer);
+        templateEngine.process("index/index", context, writer);
 
         return Result.ok();
     }
+
+
 }

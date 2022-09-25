@@ -19,8 +19,8 @@ public class SearchResponseVo implements Serializable {
     private List<Goods> goodsList = new ArrayList<>();
 
     private Long total;//总记录数
-    private Integer pageSize;//每页显示的内容
-    private Integer pageNo;//当前页面
-    private Long totalPages;
+    private Integer pageSize;//每页显示的内容，每页条数 3
+    private Integer pageNo;//当前页面   1
+    private Long totalPages;//一共多少页
 
 }

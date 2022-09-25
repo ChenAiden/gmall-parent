@@ -9,7 +9,7 @@ public class SearchParam {
     // ?category3Id=61&trademark=2:华为&props=23:4G:运行内存&order=1:desc
     private Long category1Id;;//三级分类id
     private Long category2Id;
-    private Long category3Id;
+    private Long category3Id;//现在只用三级分类id
     // trademark=2:华为
     private String trademark;//品牌
 
