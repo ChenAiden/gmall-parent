@@ -117,6 +117,8 @@
                 },
 
                 login() {
+                    //window代表窗口  location代表地址栏  href代表输入的内容        后面的代表需要获取当前的window.location.href  拿到当前地址栏中的地址信息（当前路径）
+                    // http://passport.gmall.com/login.html?originUrl=http://list.gmall.com/list.html?keyword=%E6%89%8B%E6%9C%BA
                     window.location.href = 'http://passport.gmall.com/login.html?originUrl='+window.location.href
                 },
 

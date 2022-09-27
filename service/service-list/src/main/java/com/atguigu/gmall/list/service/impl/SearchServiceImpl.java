@@ -255,11 +255,11 @@ public class SearchServiceImpl implements SearchService {
 
 
         //封装聚合操作,品牌聚合
-        TermsAggregationBuilder tmIdAggTerms = AggregationBuilders.terms("tmIdAgg").field("tmId");
-        tmIdAggTerms.subAggregation(AggregationBuilders.terms("tmNameAgg").field("tmName"));
-        tmIdAggTerms.subAggregation(AggregationBuilders.terms("tmLogoUrlAgg").field("tmLogoUrl"));
+        TermsAggregationBuilder tmIdAgg = AggregationBuilders.terms("tmIdAgg").field("tmId");
+        tmIdAgg.subAggregation(AggregationBuilders.terms("tmNameAgg").field("tmName"));
+        tmIdAgg.subAggregation(AggregationBuilders.terms("tmLogoUrlAgg").field("tmLogoUrl"));
 
-        builder.aggregation(tmIdAggTerms);
+        builder.aggregation(tmIdAgg);
 
 
         //封装聚合操作,平台聚合
@@ -285,7 +285,7 @@ public class SearchServiceImpl implements SearchService {
             String[] split = order.split(":");
             if (split != null && split.length == 2) {
 
-                String filed = null;
+                String filed = "";
                 switch (split[0]) {
                     case "1":
                         filed = "hotScore";

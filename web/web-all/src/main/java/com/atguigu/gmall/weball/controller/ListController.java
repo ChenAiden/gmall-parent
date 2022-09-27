@@ -122,7 +122,6 @@ public class ListController {
      */
     private List<SearchAttr> makeProps(String[] props) {
         //props=23:4G:运行内存
-
         List<SearchAttr> propsParamList = new ArrayList<>();
         if (props != null && props.length != 0) {
             for (String prop : props) {
