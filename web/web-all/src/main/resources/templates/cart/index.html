@@ -28,7 +28,7 @@
         <h4>全部商品<span></span></h4>
         <div class="cart-main">
             <div class="yui3-g cart-th">
-                <div class="yui3-u-1-4"><input class="chooseAll" type="checkbox" name="" id="" value="" /> 全部</div>
+                <div class="yui3-u-1-4"><input class="chooseAll" type="checkbox" @click="chooseAllCart()"  name="chooseAll" id="" value="" /> 全部</div>
                 <div class="yui3-u-1-4">商品</div>
                 <div class="yui3-u-1-8">单价（元）</div>
                 <div class="yui3-u-1-8">数量</div>
@@ -70,7 +70,7 @@
         </div>
         <div class="cart-tool">
             <div class="select-all">
-                <input class="chooseAll" type="checkbox"  name=""  value="" />
+                <input class="chooseAll" type="checkbox"  @click="chooseAllCart()" name="chooseAll"  value="" />
                 <span>全选</span>
             </div>
             <div class="option">
@@ -312,7 +312,8 @@
         data: {
             data: {},
             count: 0,
-            total: 0
+            total: 0,
+            isChooseAll: 0
         },
 
         created() {
@@ -336,11 +337,23 @@
                 this.count = 0
                 this.total = 0
                 for(var i=0; i<this.data.length; i++) {
-                    this.total += this.data[i].skuPrice * this.data[i].skuNum
                     if (this.data[i].isChecked == 1) {
-                        this.count += 1
+                        this.total += this.data[i].skuPrice * this.data[i].skuNum
+                        this.count += this.data[i].skuNum
                     }
                 }
+            },
+
+            chooseAllCart() {
+                var isChooseAll = this.isChooseAll
+                if (isChooseAll == 0) {
+                    isChooseAll = 1
+                } else {
+                    isChooseAll = 0
+                }
+                cart.chooseAllCart(isChooseAll).then(response => {
+                    this.init()
+                })
             },
 
             addToCart(skuId, skuNum=1) {

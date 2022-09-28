@@ -18,10 +18,13 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 /**
  * @author Aiden
@@ -87,13 +90,45 @@ public class AuthGlobalFilter implements GlobalFilter {
             }
         }
 
+        //获取临时id
+        String userTempId = getuserTempId(request);
+
+
         //存储userId，以后用
-        if (!StringUtils.isEmpty(userId)) {
-            request.mutate().header("userId", userId).build();
+        if (!StringUtils.isEmpty(userId) || !StringUtils.isEmpty(userTempId)) {
+
+            //携带userId
+            if (!StringUtils.isEmpty(userId)){
+                request.mutate().header("userId", userId).build();
+            }
+            //携带临时id
+            if (!StringUtils.isEmpty(userTempId)){
+                request.mutate().header("userTempId", userTempId).build();
+            }
+
             return chain.filter(exchange.mutate().request(request).build());
         }
 
         return chain.filter(exchange);
+    }
+
+    private String getuserTempId(ServerHttpRequest request) {
+        List<String> list = request.getHeaders().get("userTempId");
+        String userTempId = "";
+        if (!CollectionUtils.isEmpty(list)) {
+            userTempId = list.get(0);
+        }
+
+        if (StringUtils.isEmpty(userTempId)) {
+            MultiValueMap<String, HttpCookie> cookies = request.getCookies();
+
+            HttpCookie userTempIdCookie = cookies.getFirst("userTempId");
+            if (userTempIdCookie != null) {
+                userTempId = userTempIdCookie.getValue();
+            }
+        }
+
+        return userTempId;
     }
 
     /**
@@ -104,8 +139,8 @@ public class AuthGlobalFilter implements GlobalFilter {
      * 结果定义
      * 1.没有token  没有定义
      * 2.有token
-     *      有值  返回userId
-     *       无值 ip不对
+     * 有值  返回userId
+     * 无值 ip不对
      *
      * @param request
      * @return
@@ -128,7 +163,7 @@ public class AuthGlobalFilter implements GlobalFilter {
         //获取了token，判断一下token
         if (!StringUtils.isEmpty(token)) {
             //从redis中获取
-            String strJon = (String) redisTemplate.opsForValue().get("user:login" + token);
+            String strJon = (String) redisTemplate.opsForValue().get("user:login:" + token);
 
             if (!StringUtils.isEmpty(strJon)) {
                 //转换成JSONObject
