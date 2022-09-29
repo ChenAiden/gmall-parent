@@ -24,7 +24,7 @@ public class ProductDegradeFeignClient implements ProductFeignClient {
 
     @Override
     public Result getBaseCategoryList() {
-        return null;
+        return Result.fail();
     }
 
     @Override

@@ -75,8 +75,12 @@ public class ManageServiceImpl implements ManageService {
 
     @Autowired
     private SkuSaleAttrValueMapper skuSaleAttrValueMapper;
+
     @Autowired
     private BaseCategoryViewMapper baseCategoryViewMapper;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
 
     /**
@@ -367,8 +371,7 @@ public class ManageServiceImpl implements ManageService {
 //        return getSkuInfoRedisson(skuId);
     }
 
-    @Autowired
-    private RedisTemplate redisTemplate;
+
 
     /*
     从数据库中获取数据skuinfo和数据列表

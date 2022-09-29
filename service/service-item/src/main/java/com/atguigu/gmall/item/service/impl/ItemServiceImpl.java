@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * @create 2022-09-15 22:21
  */
 @Service
-//@SuppressWarnings(value={"unchecked", "rawtypes"})
+@SuppressWarnings("all")
 public class ItemServiceImpl implements ItemService {
 
 

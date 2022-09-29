@@ -20,4 +20,5 @@ public interface CartService {
 
     void chooseAll(String userId, Integer isChooseAll);
 
+    List<CartInfo> getCartCheckedList(String userId);
 }

@@ -14,22 +14,22 @@ public class ListDegradeFeignClient implements ListFeignClient {
 
     @Override
     public Result incrHotScore(Long skuId) {
-        return null;
+        return Result.fail();
     }
 
     @Override
     public Result lowerGoods(Long skuId) {
-        return null;
+        return Result.fail();
     }
 
     @Override
     public Result upperGoods(Long skuId) {
-        return null;
+        return Result.fail();
     }
 
     @Override
     public Result search(SearchParam searchParam) {
-        return null;
+        return Result.fail();
     }
 
 }

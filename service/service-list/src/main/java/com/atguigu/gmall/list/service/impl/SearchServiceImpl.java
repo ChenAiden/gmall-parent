@@ -31,7 +31,6 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -45,6 +44,7 @@ import java.util.stream.Collectors;
  * @create 2022-09-23 10:13
  */
 @Service
+@SuppressWarnings("all")
 public class SearchServiceImpl implements SearchService {
 
     //使用repository可以启动项目自动创建索引库
@@ -54,7 +54,6 @@ public class SearchServiceImpl implements SearchService {
     @Autowired
     private RedisTemplate redisTemplate;
 
-    @Qualifier("com.atguigu.gmall.product.client.ProductFeignClient")
     @Autowired
     private ProductFeignClient productFeignClient;
 

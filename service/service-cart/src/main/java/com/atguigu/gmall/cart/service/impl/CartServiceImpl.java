@@ -14,6 +14,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author Aiden
@@ -177,7 +178,7 @@ public class CartServiceImpl implements CartService {
 
         BoundHashOperations<String, String, CartInfo> boundHashOps = redisTemplate.boundHashOps(cartKey);
         Map<String, CartInfo> entries = boundHashOps.entries();
-        if (CollectionUtils.isEmpty(entries)){
+        if (CollectionUtils.isEmpty(entries)) {
             for (Map.Entry<String, CartInfo> stringCartInfoEntry : entries.entrySet()) {
                 CartInfo cartInfo = stringCartInfoEntry.getValue();
 
@@ -186,6 +187,29 @@ public class CartServiceImpl implements CartService {
             }
             boundHashOps.putAll(entries);
         }
+    }
+
+    @Override
+    public List<CartInfo> getCartCheckedList(String userId) {
+        String cartKey = getCartKey(userId);
+        BoundHashOperations<String, String, CartInfo> boundHashOps = redisTemplate.boundHashOps(cartKey);
+
+        List<CartInfo> cartInfoList = boundHashOps.values();
+        if (!CollectionUtils.isEmpty(cartInfoList)) {
+            cartInfoList = cartInfoList.stream().filter(cartInfo -> {
+                //结算时要更新价格
+                cartInfo.setSkuPrice(productFeignClient.getSkuPrice(cartInfo.getSkuId()));
+
+                //同时更新redis中的选中的价格
+                cartInfo.setCartPrice(cartInfo.getSkuPrice());//我觉得这里应该改一下，不然list列表中展示的不对
+                boundHashOps.put(cartInfo.getSkuId().toString(),cartInfo);
+
+                //返回选中为1的
+                return cartInfo.getIsChecked().intValue() == 1;
+            }).collect(Collectors.toList());
+        }
+
+        return cartInfoList;
     }
 
     //旧版本未合并登录前购物车
