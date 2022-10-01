@@ -1,6 +1,8 @@
 package com.atguigu.gmall.order.service;
 
 import com.atguigu.gmall.model.order.OrderInfo;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 /**
  * @author Aiden
@@ -17,5 +19,7 @@ public interface OrderInfoService {
     void deleteTradeNo(String userId);
 
     boolean checkStock(Long skuId, Integer skuNum);
+
+    IPage<OrderInfo> getOrderByPage(Page<OrderInfo> orderInfoPage, String userId);
 
 }

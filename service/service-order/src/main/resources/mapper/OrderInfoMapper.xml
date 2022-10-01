@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper SYSTEM "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.atguigu.gmall.order.mapper.OrderInfoMapper">
+
+    <sql id="orderColumns">
+        oi.id,oi.consignee,oi.consignee_tel,oi.total_amount,oi.order_status ,
+        oi.user_id,oi.payment_way,oi.delivery_address,oi.order_comment,
+        oi.out_trade_no,oi.trade_body,oi.create_time,
+        od.id orderDetail_id,od.order_id,od.sku_id,od.sku_name,od.img_url,od.sku_num
+    </sql>
+
+    <select id="selectOrderByPage" resultMap="OrderInfoMap">
+        select <include refid="orderColumns"></include>
+        from order_info oi
+                 inner join order_detail od on od.order_id = oi.id
+        where oi.user_id = #{userId} and oi.order_status not in("CLOSED","SPLIT")
+        and oi.is_deleted = 0
+        order by oi.id desc
+    </select>
+
+    <resultMap id="OrderInfoMap" type="com.atguigu.gmall.model.order.OrderInfo" autoMapping="true">
+        <id property="id" column="id"></id>
+        <collection property="orderDetailList" ofType="com.atguigu.gmall.model.order.OrderDetail" autoMapping="true">
+            <id property="id" column="orderDetail_id"></id>
+        </collection>
+    </resultMap>
+
+</mapper>

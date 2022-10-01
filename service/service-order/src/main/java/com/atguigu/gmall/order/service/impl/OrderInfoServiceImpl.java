@@ -9,6 +9,8 @@ import com.atguigu.gmall.model.order.OrderInfo;
 import com.atguigu.gmall.order.mapper.OrderDetailMapper;
 import com.atguigu.gmall.order.mapper.OrderInfoMapper;
 import com.atguigu.gmall.order.service.OrderInfoService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -88,6 +90,9 @@ public class OrderInfoServiceImpl implements OrderInfoService {
 //            redisTemplate.boundHashOps(RedisConst.USER_KEY_PREFIX + orderInfo.getUserId() + RedisConst.USER_CART_KEY_SUFFIX).delete(orderDetail.getSkuId());
         }
 
+        //开始计时记录当前订单取消时间，过时则取消订单
+
+
         return orderId;
     }
 
@@ -151,12 +156,28 @@ public class OrderInfoServiceImpl implements OrderInfoService {
      */
     @Override
     public boolean checkStock(Long skuId, Integer skuNum) {
-
-        String url = wareUrl + "/wareUrl/hasStock?skuId=" + skuId + "&num=" + skuNum;
+        // 远程调用http://localhost:9001/hasStock?skuId=10221&num=2
+        String url = wareUrl + "/hasStock?skuId=" + skuId + "&num=" + skuNum;
         //远程调用库存系统
         String result = HttpClientUtil.doGet(url);
 
-        return result.equals("1");
+        return "1".equals(result);
+    }
+
+    @Override
+    public IPage<OrderInfo> getOrderByPage(Page<OrderInfo> orderInfoPage, String userId) {
+
+        IPage<OrderInfo> orderInfoIPage = orderInfoMapper.selectOrderByPage(orderInfoPage,userId);
+
+        List<OrderInfo> records = orderInfoIPage.getRecords();
+        records.stream().forEach(orderInfo -> {
+            //获取状态
+            String orderStatus = orderInfo.getOrderStatus();
+            //修改状态名
+            orderInfo.setOrderStatusName(OrderStatus.getStatusNameByStatus(orderStatus));
+        });
+
+        return orderInfoIPage;
     }
 
 

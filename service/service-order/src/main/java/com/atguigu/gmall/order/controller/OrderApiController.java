@@ -1,5 +1,6 @@
 package com.atguigu.gmall.order.controller;
 
+import com.alibaba.nacos.common.utils.StringUtils;
 import com.atguigu.gmall.cart.client.CartFeignClient;
 import com.atguigu.gmall.common.result.Result;
 import com.atguigu.gmall.common.util.AuthContextHolder;
@@ -10,6 +11,8 @@ import com.atguigu.gmall.model.user.UserAddress;
 import com.atguigu.gmall.order.service.OrderInfoService;
 import com.atguigu.gmall.product.client.ProductFeignClient;
 import com.atguigu.gmall.user.client.UserFeignClient;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,8 +20,11 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +47,9 @@ public class OrderApiController {
 
     @Autowired
     private ProductFeignClient productFeignClient;
+
+    @Autowired
+    private ThreadPoolExecutor executor;
 
 
     //GET/api/order/auth/trade  去结算
@@ -103,30 +112,56 @@ public class OrderApiController {
             return Result.fail().message("订单不能重复提交");
         }
 
-        //校验库存
+
+        //定义错误收集错误的容器
+        List<String> errorList = new ArrayList<>();
+
+        //定义收集异步对象的集合
+        List<CompletableFuture> futureList = new ArrayList<>();
+
+        //遍历选中商品，校验库存，比较价格
         List<OrderDetail> orderDetailList = orderInfo.getOrderDetailList();
         for (OrderDetail orderDetail : orderDetailList) {
 
             Long skuId = orderDetail.getSkuId();
             Integer skuNum = orderDetail.getSkuNum();
 
-            //调用校验方法
-            boolean falg = orderInfoService.checkStock(skuId, skuNum);
-            if (!falg) {
-                return Result.fail().message("商品" + orderDetail.getSkuName() + ",库存不足");
-            }
+            //库存查询异步
+            CompletableFuture<Void> checkStockFuture = CompletableFuture.runAsync(() -> {
 
+                //调用校验方法
+                boolean falg = orderInfoService.checkStock(skuId, skuNum);
+                if (!falg) {
+                    errorList.add("商品" + orderDetail.getSkuName() + ",库存不足");
+//                    return Result.fail().message("商品" + orderDetail.getSkuName() + ",库存不足");
+                }
 
-            //再次获取实时价格更新
-            BigDecimal skuPrice = productFeignClient.getSkuPrice(skuId);
-            //比较价格
-            if (skuPrice.compareTo(orderDetail.getOrderPrice()) != 0) {
+            }, executor);
+            futureList.add(checkStockFuture);
 
-                //比较发现与生成订单时的价格不一致了，更新redis中的价格，以便能实时显示最新的价格
-                cartFeignClient.getCartCheckedList(userId);
+            //价格比较异步
+            CompletableFuture<Void> CartCheckedFuture = CompletableFuture.runAsync(() -> {
+                //再次获取实时价格更新
+                BigDecimal skuPrice = productFeignClient.getSkuPrice(skuId);
+                //比较价格
+                if (skuPrice.compareTo(orderDetail.getOrderPrice()) != 0) {
 
-                return Result.fail().message("商品" + orderDetail.getSkuName() + ",价格有变动");
-            }
+                    //比较发现与生成订单时的价格不一致了，更新redis中的价格，以便能实时显示最新的价格
+                    cartFeignClient.getCartCheckedList(userId);
+                    errorList.add("商品" + orderDetail.getSkuName() + ",价格有变动");
+//                    return Result.fail().message("商品" + orderDetail.getSkuName() + ",价格有变动");
+                }
+            }, executor);
+            futureList.add(CartCheckedFuture);
+        }
+
+        //异步编排组合
+        CompletableFuture.allOf(futureList.toArray(new CompletableFuture[futureList.size()])).join();
+
+        //错误处理
+        if (errorList.size() > 0){
+            //将错误消息拼接起来，统一发送
+            return Result.fail().message(StringUtils.join(errorList,","));
         }
 
 
@@ -137,6 +172,20 @@ public class OrderApiController {
         orderInfoService.deleteTradeNo(userId);
 
         return Result.ok(orderId);
+    }
+
+    //GET/api/order/auth/{page}/{limit} 我的订单
+    @GetMapping("/auth/{page}/{limit}")
+    public Result getOrderByPage(@PathVariable Long page,
+                                 @PathVariable Long limit,
+                                 HttpServletRequest request){
+        String userId = AuthContextHolder.getUserId(request);
+
+        Page<OrderInfo> orderInfoPage = new Page<>(page,limit);
+
+        IPage<OrderInfo> orderInfoIPage = orderInfoService.getOrderByPage(orderInfoPage,userId);
+
+        return Result.ok(orderInfoIPage);
     }
 
 

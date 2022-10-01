@@ -2,7 +2,9 @@ package com.atguigu.gmall.product.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
 import com.atguigu.gmall.common.cache.GmallCache;
+import com.atguigu.gmall.common.constant.MqConst;
 import com.atguigu.gmall.common.constant.RedisConst;
+import com.atguigu.gmall.common.service.RabbitService;
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.mapper.*;
 import com.atguigu.gmall.product.service.ManageService;
@@ -81,6 +83,9 @@ public class ManageServiceImpl implements ManageService {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private RabbitService rabbitService;
 
 
     /**
@@ -343,6 +348,10 @@ public class ManageServiceImpl implements ManageService {
         return skuInfoIPage;
     }
 
+    /**
+     * 下架
+     * @param skuId
+     */
     @Override
     public void cancelSale(Long skuId) {
         SkuInfo skuInfo = new SkuInfo();
@@ -350,15 +359,23 @@ public class ManageServiceImpl implements ManageService {
         skuInfo.setIsSale(0);
         skuInfoMapper.updateById(skuInfo);
 
-        //TODO 后续还要发送消息队列更改数据库库存   更改ElasticSearch中的信息
+        //rabbitMq  发送下架消息
+        rabbitService.sendMessage(MqConst.EXCHANGE_DIRECT_GOODS,MqConst.ROUTING_GOODS_LOWER,skuId);
     }
 
+    /**
+     * 上架
+     * @param skuId
+     */
     @Override
     public void onSale(Long skuId) {
         SkuInfo skuInfo = new SkuInfo();
         skuInfo.setId(skuId);
         skuInfo.setIsSale(1);
         skuInfoMapper.updateById(skuInfo);
+
+        //rabbitMq  发送上架消息
+        rabbitService.sendMessage(MqConst.EXCHANGE_DIRECT_GOODS,MqConst.ROUTING_GOODS_UPPER,skuId);
     }
 
     @GmallCache(prefix = "sku:", suffix = ":info")
