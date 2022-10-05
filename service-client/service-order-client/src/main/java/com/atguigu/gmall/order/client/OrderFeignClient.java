@@ -1,12 +1,12 @@
 package com.atguigu.gmall.order.client;
 
 import com.atguigu.gmall.common.result.Result;
+import com.atguigu.gmall.model.order.OrderInfo;
 import com.atguigu.gmall.order.client.impl.OrderDegradeFeignClient;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
-
-import javax.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.PathVariable;
 
 /**
  * @author Aiden
@@ -19,5 +19,10 @@ public interface OrderFeignClient {
     @ApiOperation("去结算")
     @GetMapping("/api/order/auth/trade")
     public Result trade();
+
+
+
+    @GetMapping("/api/order/inner/getOrderInfo/{orderId}")
+    public OrderInfo getOrderInfo(@PathVariable Long orderId);
 
 }

@@ -15,7 +15,6 @@ import javax.annotation.PostConstruct;
 /**
  * @author Aiden
  * @create 2022-09-30 15:00
- *
  * @Description 消息发送确认
  * <p>
  * ConfirmCallback  只确认消息是否正确到达 Exchange 中
@@ -25,7 +24,6 @@ import javax.annotation.PostConstruct;
  * 2. 如果消息到达exchange,则confirm回调,ack=true
  * 3. exchange到queue成功,则不回调return
  * 4. exchange到queue失败,则回调return
- *
  */
 @Component
 @Slf4j
@@ -41,7 +39,7 @@ public class MQProducerAckConfig implements RabbitTemplate.ConfirmCallback, Rabb
     // 修饰一个非静态的void（）方法,在服务器加载Servlet的时候运行，
     // 并且只会被服务器执行一次在构造函数之后执行，init（）方法之前执行。
 
-    //在容器生成之后将此配置添加
+    //这个注解相当于spring的生命周期，在容器生成之后将此配置添加
     @PostConstruct
     public void init() {
         rabbitTemplate.setConfirmCallback(this);            //指定 ConfirmCallback
@@ -64,31 +62,49 @@ public class MQProducerAckConfig implements RabbitTemplate.ConfirmCallback, Rabb
 
 
 
+
     //消息发送失败时，在此方法中尝试重试
     private void retryMsg(CorrelationData correlationData) {
-
         //强转成我们的消息体对象
         GmallCorrelationData gmallCorrelationData = (GmallCorrelationData) correlationData;
-
         //获取重试次数
         int retryCount = gmallCorrelationData.getRetryCount();
 
-        if (retryCount > 3){
-
-        }else {
+        if (retryCount >= 3) {
+            log.error("重试次数以到达" + JSON.toJSONString(gmallCorrelationData));
+        } else {
             //更新对象数据
             gmallCorrelationData.setRetryCount(++retryCount);
             //更新redis
-            redisTemplate.opsForValue().set(gmallCorrelationData.getId(),JSON.toJSONString(gmallCorrelationData));
+            redisTemplate.opsForValue().set(gmallCorrelationData.getId(), JSON.toJSONString(gmallCorrelationData));
 
-            //再次发送消息
-            rabbitTemplate.convertAndSend(
-                    gmallCorrelationData.getExchange(),
-                    gmallCorrelationData.getRoutingKey(),
-                    gmallCorrelationData.getMessage(),
-                    gmallCorrelationData);
+            //判断是不是延迟消息
+            boolean isDelay = gmallCorrelationData.isDelay();
+
+            if (isDelay){
+                //再次发送延迟消息
+                rabbitTemplate.convertAndSend(
+                        gmallCorrelationData.getExchange(),
+                        gmallCorrelationData.getRoutingKey(),
+                        gmallCorrelationData.getMessage(),
+                        message -> {
+                            message.getMessageProperties().setDelay(gmallCorrelationData.getDelayTime() * 1000);
+                            return message;
+                        },
+                        gmallCorrelationData);
+
+            }else {
+                //再次发送消息
+                rabbitTemplate.convertAndSend(
+                        gmallCorrelationData.getExchange(),
+                        gmallCorrelationData.getRoutingKey(),
+                        gmallCorrelationData.getMessage(),
+                        gmallCorrelationData);
+            }
         }
     }
+
+
 
 
 
@@ -102,11 +118,12 @@ public class MQProducerAckConfig implements RabbitTemplate.ConfirmCallback, Rabb
         System.out.println("消息使用的交换器 exchange : " + exchange);
         System.out.println("消息使用的路由键 routing : " + routingKey);
 
-        //获取数据对象的id
-        String correlationId = (String) message.getMessageProperties().getHeaders().get("spring_returned_message_correlation");
+        //获取数据对象的id     请求头固定
+        String id = (String) message.getMessageProperties().getHeaders().get("spring_returned_message_correlation");
 
-        //从redis中获取信息
-        String str = (String) redisTemplate.opsForValue().get(correlationId);
+        //从redis中获取信息  不能直接转换成对象
+        String str = (String) redisTemplate.opsForValue().get(id);
+
         //转化为消息实体
         GmallCorrelationData gmallCorrelationData = JSON.parseObject(str, GmallCorrelationData.class);
 

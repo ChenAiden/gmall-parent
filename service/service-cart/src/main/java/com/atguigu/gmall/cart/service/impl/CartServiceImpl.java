@@ -101,9 +101,9 @@ public class CartServiceImpl implements CartService {
         if (StringUtils.isEmpty(userId)) {
             if (!CollectionUtils.isEmpty(noLoginCartInfoList)) {
                 //按时间顺序排序
-                noLoginCartInfoList.sort(((o1, o2) -> {
+                noLoginCartInfoList.sort((o1, o2) -> {
                     return DateUtil.truncatedCompareTo(o2.getUpdateTime(), o1.getUpdateTime(), Calendar.SECOND);
-                }));
+                });
                 return noLoginCartInfoList;
             }
         }
@@ -145,9 +145,11 @@ public class CartServiceImpl implements CartService {
         //不用合并，直接返回登录之后的购物车,合并后的购物车也走这里进行排序
         List<CartInfo> loginCartInfo = boundHashOps.values();
 
-        loginCartInfo.sort((o1, o2) -> {
-            return DateUtil.truncatedCompareTo(o2.getUpdateTime(), o1.getUpdateTime(), Calendar.SECOND);
-        });
+        if (!CollectionUtils.isEmpty(loginCartInfo)) {
+            loginCartInfo.sort((o1, o2) -> {
+                return DateUtil.truncatedCompareTo(o2.getUpdateTime(), o1.getUpdateTime(), Calendar.SECOND);
+            });
+        }
 
         return loginCartInfo;
     }
@@ -201,7 +203,6 @@ public class CartServiceImpl implements CartService {
                 cartInfo.setSkuPrice(productFeignClient.getSkuPrice(cartInfo.getSkuId()));
 
                 //同时更新redis中的选中的价格
-                cartInfo.setCartPrice(cartInfo.getSkuPrice());//我觉得这里应该改一下，不然list列表中展示的不对
                 boundHashOps.put(cartInfo.getSkuId().toString(),cartInfo);
 
                 //返回选中为1的

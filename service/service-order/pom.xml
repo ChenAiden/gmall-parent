@@ -32,6 +32,13 @@
             <artifactId>service-user-client</artifactId>
             <version>1.0</version>
         </dependency>
+
+        <!--rabbit-util rabbit工具类-->
+        <dependency>
+            <groupId>com.atguigu.gmall</groupId>
+            <artifactId>rabbit-util</artifactId>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
 
     <build>

@@ -142,6 +142,7 @@ public class GmallCacheAspect {
 
         //判断是否为空
         if (!StringUtils.isEmpty(jsonStr)) {
+//            Object parse = JSONObject.parse(jsonStr);
             Object object = JSONObject.parseObject(jsonStr, aClass);//转换为对应类型的objec
             return object;
         }

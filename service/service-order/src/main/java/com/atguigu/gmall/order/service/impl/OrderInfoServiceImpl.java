@@ -1,5 +1,7 @@
 package com.atguigu.gmall.order.service.impl;
 
+import com.atguigu.gmall.common.constant.MqConst;
+import com.atguigu.gmall.common.service.RabbitService;
 import com.atguigu.gmall.common.util.HttpClientUtil;
 import com.atguigu.gmall.model.enums.OrderStatus;
 import com.atguigu.gmall.model.enums.PaymentType;
@@ -9,8 +11,10 @@ import com.atguigu.gmall.model.order.OrderInfo;
 import com.atguigu.gmall.order.mapper.OrderDetailMapper;
 import com.atguigu.gmall.order.mapper.OrderInfoMapper;
 import com.atguigu.gmall.order.service.OrderInfoService;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -25,7 +29,7 @@ import java.util.*;
  * @create 2022-09-29 11:31
  */
 @Service
-public class OrderInfoServiceImpl implements OrderInfoService {
+public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo> implements OrderInfoService {
 
     @Autowired
     private OrderInfoMapper orderInfoMapper;
@@ -35,6 +39,12 @@ public class OrderInfoServiceImpl implements OrderInfoService {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Value("${ware.url}")
+    private String wareUrl;
+
+    @Autowired
+    private RabbitService rabbitService;
 
 
     @Transactional
@@ -90,8 +100,13 @@ public class OrderInfoServiceImpl implements OrderInfoService {
 //            redisTemplate.boundHashOps(RedisConst.USER_KEY_PREFIX + orderInfo.getUserId() + RedisConst.USER_CART_KEY_SUFFIX).delete(orderDetail.getSkuId());
         }
 
-        //开始计时记录当前订单取消时间，过时则取消订单
 
+        //开始计时，超时则取消订单
+        rabbitService.sendDelayMsg(
+                MqConst.EXCHANGE_DIRECT_ORDER_CANCEL,
+                MqConst.ROUTING_ORDER_CANCEL,
+                orderId,
+                MqConst.DELAY_TIME);
 
         return orderId;
     }
@@ -145,11 +160,11 @@ public class OrderInfoServiceImpl implements OrderInfoService {
     }
 
 
-    @Value("${ware.url}")
-    private String wareUrl;
+
 
     /**
      * 调用库存系统接口查询是否还有库存
+     *
      * @param skuId
      * @param skuNum
      * @return
@@ -167,7 +182,7 @@ public class OrderInfoServiceImpl implements OrderInfoService {
     @Override
     public IPage<OrderInfo> getOrderByPage(Page<OrderInfo> orderInfoPage, String userId) {
 
-        IPage<OrderInfo> orderInfoIPage = orderInfoMapper.selectOrderByPage(orderInfoPage,userId);
+        IPage<OrderInfo> orderInfoIPage = orderInfoMapper.selectOrderByPage(orderInfoPage, userId);
 
         List<OrderInfo> records = orderInfoIPage.getRecords();
         records.stream().forEach(orderInfo -> {
@@ -178,6 +193,61 @@ public class OrderInfoServiceImpl implements OrderInfoService {
         });
 
         return orderInfoIPage;
+    }
+
+
+    /**
+     * 关闭订单
+     *
+     * @param orderId
+     */
+    @Override
+    public void cancelOrder(Long orderId) {
+
+//        OrderInfo orderInfo = new OrderInfo();
+//        orderInfo.setId(orderId);
+//        //订单状态
+//        orderInfo.setOrderStatus(OrderStatus.CLOSED.name());
+//        //步骤状态
+//        orderInfo.setProcessStatus(ProcessStatus.CLOSED.name());
+
+//        orderInfoMapper.updateById(orderInfo);
+
+        //封装了方法专门修改当前订单状态
+        this.updateOrder(orderId, ProcessStatus.CLOSED);
+    }
+
+    @Override
+    public void updateOrder(Long orderId, ProcessStatus processStatus) {
+
+        OrderInfo orderInfo = new OrderInfo();
+        orderInfo.setId(orderId);
+        //订单状态
+        orderInfo.setOrderStatus(processStatus.getOrderStatus().name());
+        //步骤状态
+        orderInfo.setProcessStatus(processStatus.name());
+
+        orderInfoMapper.updateById(orderInfo);
+    }
+
+    /**
+     * 根据id查询orderInfo对象，提供给支付页面显示
+     *
+     * @param orderId
+     * @return
+     */
+    @Override
+    public OrderInfo getOrderInfoById(Long orderId) {
+        //查询订单
+        OrderInfo orderInfo = orderInfoMapper.selectById(orderId);
+        //根据orderId查询  订单详情
+        QueryWrapper<OrderDetail> wrapper = new QueryWrapper<>();
+        wrapper.eq("order_id", orderId);
+        List<OrderDetail> orderDetails = orderDetailMapper.selectList(wrapper);
+
+        orderInfo.setOrderDetailList(orderDetails);
+
+        return orderInfo;
     }
 
 

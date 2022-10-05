@@ -89,6 +89,7 @@ public class OrderApiController {
         resultMap.put("detailArrayList", detailArrayList);//
         resultMap.put("totalNum", detailArrayList.size());
         resultMap.put("totalAmount", totalAmount);
+        //添加流水号
         resultMap.put("tradeNo", orderInfoService.getTradeNo(userId));
 
         return Result.ok(resultMap);
@@ -159,9 +160,9 @@ public class OrderApiController {
         CompletableFuture.allOf(futureList.toArray(new CompletableFuture[futureList.size()])).join();
 
         //错误处理
-        if (errorList.size() > 0){
+        if (errorList.size() > 0) {
             //将错误消息拼接起来，统一发送
-            return Result.fail().message(StringUtils.join(errorList,","));
+            return Result.fail().message(StringUtils.join(errorList, ","));
         }
 
 
@@ -178,14 +179,27 @@ public class OrderApiController {
     @GetMapping("/auth/{page}/{limit}")
     public Result getOrderByPage(@PathVariable Long page,
                                  @PathVariable Long limit,
-                                 HttpServletRequest request){
+                                 HttpServletRequest request) {
         String userId = AuthContextHolder.getUserId(request);
 
-        Page<OrderInfo> orderInfoPage = new Page<>(page,limit);
+        Page<OrderInfo> orderInfoPage = new Page<>(page, limit);
 
-        IPage<OrderInfo> orderInfoIPage = orderInfoService.getOrderByPage(orderInfoPage,userId);
+        IPage<OrderInfo> orderInfoIPage = orderInfoService.getOrderByPage(orderInfoPage, userId);
 
         return Result.ok(orderInfoIPage);
+    }
+
+
+    /**
+     * 根据id查询orderInfo对象，提供给支付页面显示
+     * GET/api/order/inner/getOrderInfo/{orderId}
+     *
+     * @param orderId
+     * @return
+     */
+    @GetMapping("/inner/getOrderInfo/{orderId}")
+    public OrderInfo getOrderInfo(@PathVariable Long orderId) {
+        return orderInfoService.getOrderInfoById(orderId);
     }
 
 

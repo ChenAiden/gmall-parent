@@ -4,7 +4,7 @@ import lombok.Data;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 
 /**
- * 自定义一个实体类来接收消息
+ * 自定义一个实体类来接收消息，因为ConfirmCallback需要一个CorrelationData对象
  *
  * @author Aiden
  * @create 2022-09-30 15:37

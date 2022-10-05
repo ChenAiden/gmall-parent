@@ -22,7 +22,6 @@ public class ListReceiver {
     @Autowired
     private SearchService searchService;
 
-
     @RabbitListener(bindings = @QueueBinding(
             value = @Queue(value = MqConst.QUEUE_GOODS_UPPER, durable = "true", autoDelete = "false"),
             exchange = @Exchange(value = MqConst.EXCHANGE_DIRECT_GOODS, durable = "true", autoDelete = "false"),
@@ -37,10 +36,10 @@ public class ListReceiver {
                 searchService.upperGoods(skuId);
             }
         } catch (Exception e) {
-            //出错后可以写入日志  或者发送短信给程序员
+            //出错后可以写入日志  或者发送短信给程序员，具体操作看情况在这里编写
             e.printStackTrace();
         }
-
+                                       //拿到消息确认的唯一标识Tag     是否批量确认 false 确认一个消息，true 批量确认
         channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
     }
 
@@ -59,7 +58,7 @@ public class ListReceiver {
                 searchService.lowerGoods(skuId);
             }
         } catch (Exception e) {
-            //出错后可以写入日志  或者发送短信给程序员
+            //出错后可以写入日志  或者发送短信给程序员，具体操作看情况在这里编写
             e.printStackTrace();
         }
 

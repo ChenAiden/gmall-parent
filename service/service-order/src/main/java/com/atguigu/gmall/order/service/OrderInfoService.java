@@ -1,14 +1,16 @@
 package com.atguigu.gmall.order.service;
 
+import com.atguigu.gmall.model.enums.ProcessStatus;
 import com.atguigu.gmall.model.order.OrderInfo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
  * @author Aiden
  * @create 2022-09-29 11:31
  */
-public interface OrderInfoService {
+public interface OrderInfoService extends IService<OrderInfo> {
 
     Long submitOrder(OrderInfo orderInfo);
 
@@ -22,4 +24,9 @@ public interface OrderInfoService {
 
     IPage<OrderInfo> getOrderByPage(Page<OrderInfo> orderInfoPage, String userId);
 
+    void cancelOrder(Long orderId);
+
+    void updateOrder(Long orderId, ProcessStatus processStatus);
+
+    OrderInfo getOrderInfoById(Long orderId);
 }
