@@ -4,8 +4,13 @@ import com.alibaba.fastjson.JSONObject;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
 import com.alipay.api.request.AlipayTradePagePayRequest;
+import com.alipay.api.request.AlipayTradeRefundRequest;
 import com.alipay.api.response.AlipayTradePagePayResponse;
+import com.alipay.api.response.AlipayTradeRefundResponse;
+import com.atguigu.gmall.model.enums.PaymentStatus;
+import com.atguigu.gmall.model.enums.PaymentType;
 import com.atguigu.gmall.model.order.OrderInfo;
+import com.atguigu.gmall.model.payment.PaymentInfo;
 import com.atguigu.gmall.order.client.OrderFeignClient;
 import com.atguigu.gmall.payment.config.AlipayConfig;
 import com.atguigu.gmall.payment.service.AlipayService;
@@ -36,15 +41,20 @@ public class AlipayServiceImpl implements AlipayService {
         //判断订单状态
         OrderInfo orderInfo = orderFeignClient.getOrderInfo(orderId);
 
-        if ("PAID".equals(orderInfo.getOrderStatus()) || "CLOSE".equals(orderInfo.getOrderStatus())){
+        if ("PAID".equals(orderInfo.getOrderStatus()) || "CLOSE".equals(orderInfo.getOrderStatus())) {
             return "该订单已经完成或已经关闭!";
         }
+
+        //调用保存交易记录方法！
+        paymentService.savePayment(orderInfo, PaymentType.ALIPAY);
 
 
         //支付宝接口的写法
 //        AlipayClient alipayClient = new DefaultAlipayClient("https://openapi.alipay.com/gateway.do","app_id","your private_key","json","GBK","alipay_public_key","RSA2");
         AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
-//        request.setNotifyUrl("");
+        //异步回调地址
+        request.setNotifyUrl(AlipayConfig.notify_payment_url);
+        //同步回调地址
         request.setReturnUrl(AlipayConfig.return_payment_url);
 
         JSONObject bizContent = new JSONObject();
@@ -55,7 +65,7 @@ public class AlipayServiceImpl implements AlipayService {
         //超时绝对时间
         //bizContent.put("time_expire", "2022-08-01 22:00:00");
         //  设置二维码过期时间
-        bizContent.put("timeout_express","10m");
+        bizContent.put("timeout_express", "10m");
 
 
         //// 商品明细信息，按需传入
@@ -83,13 +93,63 @@ public class AlipayServiceImpl implements AlipayService {
             e.printStackTrace();
         }
 
-        if(response.isSuccess()){
+        if (response.isSuccess()) {
             System.out.println("调用成功");
         } else {
             System.out.println("调用失败");
         }
 
         return response.getBody();
+    }
+
+
+    /**
+     * 退款
+     * @param orderId
+     * @return
+     */
+    @Override
+    public boolean refund(Long orderId) {
+
+        OrderInfo orderInfo = orderFeignClient.getOrderInfo(orderId);
+
+        if (orderInfo == null) return false;
+
+//        AlipayClient alipayClient = new DefaultAlipayClient("https://openapi.alipay.com/gateway.do","app_id","your private_key","json","GBK","alipay_public_key","RSA2");
+        AlipayTradeRefundRequest request = new AlipayTradeRefundRequest();
+        JSONObject bizContent = new JSONObject();
+        bizContent.put("out_trade_no", orderInfo.getOutTradeNo());
+        bizContent.put("refund_amount", 0.01);
+        bizContent.put("out_request_no", "HZ01RF001");
+
+        //// 返回参数选项，按需传入
+        //JSONArray queryOptions = new JSONArray();
+        //queryOptions.add("refund_detail_item_list");
+        //bizContent.put("query_options", queryOptions);
+
+        request.setBizContent(bizContent.toString());
+
+        AlipayTradeRefundResponse response = null;
+        try {
+            response = alipayClient.execute(request);
+        } catch (AlipayApiException e) {
+            e.printStackTrace();
+        }
+
+        if (response.isSuccess()) {
+            System.out.println("调用成功");
+            //退款成功后修改订单状态
+            PaymentInfo paymentInfo = new PaymentInfo();
+            paymentInfo.setPaymentStatus(PaymentStatus.CLOSED.name());
+
+            paymentService.updatePaymentInfo(orderInfo.getOutTradeNo(),PaymentType.ALIPAY.name(),paymentInfo);
+
+            return true;
+        } else {
+            System.out.println("调用失败");
+            return false;
+        }
+
     }
 
 

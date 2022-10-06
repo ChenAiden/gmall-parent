@@ -1,5 +1,6 @@
 package com.atguigu.gmall.order.controller;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.nacos.common.utils.StringUtils;
 import com.atguigu.gmall.cart.client.CartFeignClient;
 import com.atguigu.gmall.common.result.Result;
@@ -23,6 +24,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
@@ -201,6 +203,31 @@ public class OrderApiController {
     public OrderInfo getOrderInfo(@PathVariable Long orderId) {
         return orderInfoService.getOrderInfoById(orderId);
     }
+
+
+    //POST/api/order/orderSplit  拆单接口
+    @PostMapping("/orderSplit")
+    public String orderSplit(HttpServletRequest request){
+
+        //获取订单
+        String orderId = request.getParameter("orderId");
+        //获取仓库编号和商品的对照关系
+        String wareSkuMap = request.getParameter("wareSkuMap");//[{"wareId":"1","skuIds":["28"]},{"wareId":"2","skuIds":["30"]}]
+
+        //拆单
+        List<OrderInfo> orderInfoList = orderInfoService.orderSplit(orderId,wareSkuMap);
+
+        List<Map> resultList = new ArrayList<>();
+
+        //遍历集合  将orderInfo转换为map（因为人家要的信息的名字和info的属性名不同）
+        for (OrderInfo orderInfo : orderInfoList) {
+            Map<String, Object> map = orderInfoService.getStringObjectMap(orderInfo);
+            resultList.add(map);
+        }
+
+        return JSON.toJSONString(resultList);
+    }
+
 
 
 }

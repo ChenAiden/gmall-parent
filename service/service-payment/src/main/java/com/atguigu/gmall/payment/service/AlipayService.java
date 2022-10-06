@@ -8,4 +8,6 @@ public interface AlipayService {
 
     String submit(Long orderId);
 
+    boolean refund(Long orderId);
+
 }

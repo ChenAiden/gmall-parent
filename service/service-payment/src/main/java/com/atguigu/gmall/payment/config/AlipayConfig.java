@@ -19,8 +19,16 @@ public class AlipayConfig {
     @Value("${app_private_key}")
     private String app_private_key;
 
+//    @Value("${app_id}")
+//    private String app_id;
+
+
+    public static String app_id;
+
     @Value("${app_id}")
-    private String app_id;
+    public void app_id(String app_id) {
+        AlipayConfig.app_id = app_id;
+    }
 
 
     public final static String format = "json";

@@ -1,14 +1,22 @@
 package com.atguigu.gmall.order.receiver;
 
+import com.alibaba.fastjson.JSON;
 import com.atguigu.gmall.common.constant.MqConst;
+import com.atguigu.gmall.model.enums.ProcessStatus;
 import com.atguigu.gmall.model.order.OrderInfo;
 import com.atguigu.gmall.order.service.OrderInfoService;
 import com.rabbitmq.client.Channel;
 import lombok.SneakyThrows;
 import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.annotation.Exchange;
+import org.springframework.amqp.rabbit.annotation.Queue;
+import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import java.util.Map;
 
 /**
  * @author Aiden
@@ -23,7 +31,6 @@ public class OrderReceiver {
     @SneakyThrows
     @RabbitListener(queues = MqConst.QUEUE_ORDER_CANCEL)
     public void cancelOrder(Long orderId, Message message, Channel channel) {
-
 
         try {
             //判断当前订单Id不能为空
@@ -44,4 +51,69 @@ public class OrderReceiver {
 
         channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
     }
+
+    /**
+     * 支付成功后修改订单状态，并发送消息扣减库存
+     *
+     * @param orderId
+     * @param message
+     * @param channel
+     */
+    @SneakyThrows
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(value = MqConst.QUEUE_PAYMENT_PAY, durable = "true", autoDelete = "false"),
+            exchange = @Exchange(value = MqConst.EXCHANGE_DIRECT_PAYMENT_PAY, durable = "true", autoDelete = "false"),
+            key = {MqConst.ROUTING_PAYMENT_PAY}
+    ))
+    public void paySuccessUpdateOrder(Long orderId, Message message, Channel channel) {
+
+        try {
+            if (orderId != null) {
+                orderInfoService.updateOrder(orderId, ProcessStatus.PAID);
+
+                //发送消息修改库存
+                orderInfoService.sendOrderSatusToSotck(orderId);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+    }
+
+    /**
+     * 接收库存消息，根据库存消息更改状态
+     * @param mapJson
+     * @param message
+     * @param channel
+     */
+    @SneakyThrows
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(value = MqConst.QUEUE_WARE_ORDER, durable = "true", autoDelete = "false"),
+            exchange = @Exchange(value = MqConst.EXCHANGE_DIRECT_WARE_ORDER),
+            key = {MqConst.ROUTING_WARE_ORDER}
+    ))
+    public void lockStock(String mapJson, Message message, Channel channel) {
+
+        if (!StringUtils.isEmpty(mapJson)) {
+            Map<String, String> map = JSON.parseObject(mapJson, Map.class);
+
+            String orderId = map.get("orderId");
+            if ("DEDUCTED".equals(map.get("status"))) {
+                //扣减库存成功
+                //修改订单,状态为待发货
+                orderInfoService.updateOrder(Long.valueOf(orderId),ProcessStatus.WAITING_DELEVER);
+
+                //应该再去对接物流系统
+            }else {
+                //超卖了
+                //修改订单，状态为库存异常
+                orderInfoService.updateOrder(Long.valueOf(orderId),ProcessStatus.STOCK_EXCEPTION);
+            }
+        }
+
+        channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+    }
+
+
 }

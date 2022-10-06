@@ -1,5 +1,7 @@
 package com.atguigu.gmall.order.service.impl;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.atguigu.gmall.common.constant.MqConst;
 import com.atguigu.gmall.common.service.RabbitService;
 import com.atguigu.gmall.common.util.HttpClientUtil;
@@ -15,6 +17,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -160,8 +163,6 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     }
 
 
-
-
     /**
      * 调用库存系统接口查询是否还有库存
      *
@@ -248,6 +249,127 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         orderInfo.setOrderDetailList(orderDetails);
 
         return orderInfo;
+    }
+
+    @Override
+    public void sendOrderSatusToSotck(Long orderId) {
+        //查询订单消息
+        OrderInfo orderInfo = getOrderInfoById(orderId);
+
+        //修改订单状态,改为已经通知仓储
+        updateOrder(orderId,ProcessStatus.NOTIFIED_WARE);
+
+        //转化库存系统需要的数据 json
+        String mapJson = initWareOrder(orderInfo);
+
+        //发送消息
+        rabbitService.sendMessage(
+                MqConst.EXCHANGE_DIRECT_WARE_STOCK,
+                MqConst.ROUTING_WARE_STOCK,
+                mapJson);
+    }
+
+    /**
+     * 拆单：
+     * 原来的订单根据库存地址不同，拆分为多个订单
+     *      orderInfo--来自父订单
+     *      orderDetail--根据对照关系从父的详情集合中获取对应的详情对象
+     *
+     * [{"wareId":"1","skuIds":["2","10"]},{"wareId":"2","skuIds":["3"]}]
+     *
+     * @param orderId
+     * @param wareSkuMap
+     * @return
+     */
+    @Override
+    public List<OrderInfo> orderSplit(String orderId, String wareSkuMap) {
+        //查询父订单
+        OrderInfo orderInfo = getOrderInfoById(Long.valueOf(orderId));
+
+        //定义集合收集子订单
+        List<OrderInfo> orderInfoList = new ArrayList<>();
+
+        //处理根据
+        List<Map> mapList = JSONArray.parseArray(wareSkuMap, Map.class);
+        List<OrderDetail> orderDetailList = orderInfo.getOrderDetailList();
+        for (Map map : mapList) {
+            //封装 子OrderInfo
+            OrderInfo subOrderInfo = new OrderInfo();
+            //拷贝数据
+            BeanUtils.copyProperties(orderInfo,subOrderInfo);
+            //设置仓库id
+            subOrderInfo.setWareId((String) map.get("wareId"));
+            //置空id 防止主键冲突
+            subOrderInfo.setId(null);
+
+
+            //获取当前仓库对应的skuId
+            List<String> ids = (List<String>) map.get("skuIds");
+
+            //封装orderDetail
+            List<OrderDetail> subOrderDetailList = new ArrayList<>();
+            //遍历父订单的订单详情
+            for (OrderDetail orderDetail : orderDetailList) {
+                for (String id : ids) {
+                    if (orderDetail.getSkuId().toString().equals(id)){
+                        subOrderDetailList.add(orderDetail);
+                    }
+                }
+            }
+
+            subOrderInfo.setOrderDetailList(subOrderDetailList);
+
+            //总金额
+            subOrderInfo.sumTotalAmount();
+
+            //保存订单
+            this.submitOrder(subOrderInfo);
+
+            //收集子订单
+            orderInfoList.add(subOrderInfo);
+        }
+
+        //修该父订单状态
+        this.updateOrder(Long.valueOf(orderId),ProcessStatus.SPLIT);
+
+        return orderInfoList;
+    }
+
+    private String initWareOrder(OrderInfo orderInfo) {
+        Map<String, Object> resultMap = getStringObjectMap(orderInfo);
+
+        return JSON.toJSONString(resultMap);
+    }
+
+    public Map<String, Object> getStringObjectMap(OrderInfo orderInfo) {
+        //创建一个map
+        Map<String,Object> resultMap = new HashMap<>();
+
+        resultMap.put("orderId", orderInfo.getId());
+        resultMap.put("consignee", orderInfo.getConsignee());
+        resultMap.put("consigneeTel", orderInfo.getConsigneeTel());
+        resultMap.put("orderComment", orderInfo.getTotalAmount());
+        resultMap.put("orderBody", orderInfo.getTradeBody());
+        resultMap.put("deliveryAddress", orderInfo.getDeliveryAddress());
+        resultMap.put("paymentWay","2");
+
+        //处理仓库
+        resultMap.put("wareId",orderInfo.getWareId());
+
+        //创建集合收集明细
+        List<Map<String,Object>> details = new ArrayList<>();
+
+        List<OrderDetail> detailList = orderInfo.getOrderDetailList();
+        for (OrderDetail orderDetail : detailList) {
+            Map<String,Object> map = new HashMap<>();
+            map.put("skuId",orderDetail.getSkuId());
+            map.put("skuNum",orderDetail.getSkuNum());
+            map.put("skuName",orderDetail.getSkuName());
+            details.add(map);
+        }
+
+        resultMap.put("details",details);
+        return resultMap;
     }
 
 
