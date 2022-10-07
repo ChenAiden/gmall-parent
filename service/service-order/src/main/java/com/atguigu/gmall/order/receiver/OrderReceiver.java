@@ -2,9 +2,12 @@ package com.atguigu.gmall.order.receiver;
 
 import com.alibaba.fastjson.JSON;
 import com.atguigu.gmall.common.constant.MqConst;
+import com.atguigu.gmall.model.enums.PaymentStatus;
 import com.atguigu.gmall.model.enums.ProcessStatus;
 import com.atguigu.gmall.model.order.OrderInfo;
+import com.atguigu.gmall.model.payment.PaymentInfo;
 import com.atguigu.gmall.order.service.OrderInfoService;
+import com.atguigu.gmall.payment.client.PaymentFeignClient;
 import com.rabbitmq.client.Channel;
 import lombok.SneakyThrows;
 import org.springframework.amqp.core.Message;
@@ -28,6 +31,16 @@ public class OrderReceiver {
     @Autowired
     private OrderInfoService orderInfoService;
 
+    @Autowired
+    private PaymentFeignClient paymentFeignClient;
+
+    /**
+     * 超时  订单关闭
+     *
+     * @param orderId
+     * @param message
+     * @param channel
+     */
     @SneakyThrows
     @RabbitListener(queues = MqConst.QUEUE_ORDER_CANCEL)
     public void cancelOrder(Long orderId, Message message, Channel channel) {
@@ -41,7 +54,34 @@ public class OrderReceiver {
 
                 //判断支付状态，进度状态，不满足的都不消费消息，这就保证了消息的幂等性，只有未支付状态的订单才能消费消息，其他任何情况都不可以
                 if (orderInfo != null && "UNPAID".equals(orderInfo.getOrderStatus()) && "UNPAID".equals(orderInfo.getProcessStatus())) {
-                    orderInfoService.cancelOrder(orderId);
+
+                    //查询支付记录
+                    PaymentInfo paymentInfo = paymentFeignClient.getPaymentInfo(orderInfo.getOutTradeNo());
+                    if (paymentInfo != null && paymentInfo.getPaymentStatus().equals(PaymentStatus.UNPAID.name())) {
+
+                        //查询支付宝中是否有记录，只有处于等待支付时才返回true
+                        boolean checkPayment = paymentFeignClient.checkPayment(orderId);
+                        if (checkPayment) {
+
+                            //判断是否需要关闭支付宝中的订单
+                            boolean closePay = paymentFeignClient.closePay(orderId);
+                            if (closePay) {
+                                //关闭订单
+                                orderInfoService.cancelOrder(orderId, "2");
+                            } else {
+                                //关闭支付宝失败，说明可能在最后操作过程中用户支付成功了
+                                //用户支付了都会自动异步回调，按照异步回调的过程修改状态即可
+                            }
+
+                        } else {
+                            //只打开了支付页面（生成了本地支付表），没有支付,关闭本地支付表
+                            orderInfoService.cancelOrder(orderId, "2");
+                        }
+
+                    } else {
+                        //关闭订单
+                        orderInfoService.cancelOrder(orderId, "1");
+                    }
                 }
             }
         } catch (Exception e) {
@@ -51,6 +91,7 @@ public class OrderReceiver {
 
         channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
     }
+
 
     /**
      * 支付成功后修改订单状态，并发送消息扣减库存
@@ -81,8 +122,10 @@ public class OrderReceiver {
         channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
     }
 
+
     /**
      * 接收库存消息，根据库存消息更改状态
+     *
      * @param mapJson
      * @param message
      * @param channel
@@ -102,13 +145,13 @@ public class OrderReceiver {
             if ("DEDUCTED".equals(map.get("status"))) {
                 //扣减库存成功
                 //修改订单,状态为待发货
-                orderInfoService.updateOrder(Long.valueOf(orderId),ProcessStatus.WAITING_DELEVER);
+                orderInfoService.updateOrder(Long.valueOf(orderId), ProcessStatus.WAITING_DELEVER);
 
                 //应该再去对接物流系统
-            }else {
+            } else {
                 //超卖了
                 //修改订单，状态为库存异常
-                orderInfoService.updateOrder(Long.valueOf(orderId),ProcessStatus.STOCK_EXCEPTION);
+                orderInfoService.updateOrder(Long.valueOf(orderId), ProcessStatus.STOCK_EXCEPTION);
             }
         }
 

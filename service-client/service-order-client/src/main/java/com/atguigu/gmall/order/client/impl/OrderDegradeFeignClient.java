@@ -22,4 +22,9 @@ public class OrderDegradeFeignClient implements OrderFeignClient {
     public OrderInfo getOrderInfo(Long orderId) {
         return null;
     }
+
+    @Override
+    public Long submitOrder(OrderInfo orderInfo) {
+        return null;
+    }
 }

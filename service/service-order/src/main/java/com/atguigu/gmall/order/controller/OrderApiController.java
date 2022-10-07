@@ -98,7 +98,13 @@ public class OrderApiController {
     }
 
 
-    //POST/api/order/auth/submitOrder   提交订单
+
+    /**
+     * POST/api/order/auth/submitOrder   提交订单
+     * @param orderInfo
+     * @param request
+     * @return
+     */
     @ApiOperation("提交订单")
     @PostMapping("/auth/submitOrder")
     public Result submitOrder(@RequestBody OrderInfo orderInfo,
@@ -228,6 +234,20 @@ public class OrderApiController {
         return JSON.toJSONString(resultList);
     }
 
+
+    /**
+     * 秒杀提交订单,不需要做校验了
+     *
+     * /api/order/inner/seckill/submitOrder
+     * @param orderInfo
+     * @return
+     */
+    @ApiOperation("秒杀提交订单")
+    @PostMapping("/inner/seckill/submitOrder")
+    public Long submitOrder(@RequestBody OrderInfo orderInfo) {
+
+        return orderInfoService.submitOrder(orderInfo);
+    }
 
 
 }

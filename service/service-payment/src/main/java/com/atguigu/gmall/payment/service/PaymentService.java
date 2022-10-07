@@ -24,4 +24,10 @@ public interface PaymentService {
     void paySuccess(String outTradeNo, PaymentType alipay, Map<String, String> paramsMap);
 
     void updatePaymentInfo(String outTradeNo, String name, PaymentInfo paymentInfo);
+
+    /**
+     * 关闭支付记录
+     * @param orderId
+     */
+    void closePayment(Long orderId);
 }

@@ -27,7 +27,7 @@ public interface OrderInfoService extends IService<OrderInfo> {
 
     IPage<OrderInfo> getOrderByPage(Page<OrderInfo> orderInfoPage, String userId);
 
-    void cancelOrder(Long orderId);
+    void cancelOrder(Long orderId,String falg);
 
     void updateOrder(Long orderId, ProcessStatus processStatus);
 

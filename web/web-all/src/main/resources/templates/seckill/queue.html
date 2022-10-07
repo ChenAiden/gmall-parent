@@ -179,19 +179,23 @@
                     this.data = response.data.data
                     this.code = response.data.code
                     console.log(JSON.stringify(this.data))
-                    //排队中
+                                        //正在排队中
                     if(response.data.code == 211) {
+                        //排队中
                         this.show = 1
                     } else {
-                        //秒杀成功
+                                            //抢单成功
                         if(response.data.code == 215) {
+                            //秒杀成功
                             this.show = 3
                             this.message = response.data.message
                         } else {
+                                                //下单成功
                             if(response.data.code == 218) {
                                 this.show = 4
                                 this.message = response.data.message
                             } else {
+                                //异常状态  非法请求或已售罄
                                 this.show = 2
                                 this.message = response.data.message
                             }

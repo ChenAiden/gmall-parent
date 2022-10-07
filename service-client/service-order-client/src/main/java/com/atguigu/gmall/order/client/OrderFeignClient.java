@@ -7,6 +7,8 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 /**
  * @author Aiden
@@ -24,5 +26,18 @@ public interface OrderFeignClient {
 
     @GetMapping("/api/order/inner/getOrderInfo/{orderId}")
     public OrderInfo getOrderInfo(@PathVariable Long orderId);
+
+
+    /**
+     * 秒杀提交订单,不需要做校验了
+     *
+     * /api/order/inner/seckill/submitOrder
+     * @param orderInfo
+     * @return
+     */
+    @ApiOperation("秒杀提交订单")
+    @PostMapping("/api/order/inner/seckill/submitOrder")
+    public Long submitOrder(@RequestBody OrderInfo orderInfo);
+
 
 }

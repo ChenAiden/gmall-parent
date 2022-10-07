@@ -17,34 +17,38 @@
     </properties>
 
     <dependencies>
-        <!--MybatisPlus代码生成器-->
         <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-generator</artifactId>
-            <version>3.3.1</version>
+            <groupId>com.atguigu.gmall</groupId>
+            <artifactId>service-user-client</artifactId>
+            <version>1.0</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.apache.velocity</groupId>
-            <artifactId>velocity-engine-core</artifactId>
-            <version>2.0</version>
-        </dependency>
-
-        <!--minio-->
-        <dependency>
-            <groupId>io.minio</groupId>
-            <artifactId>minio</artifactId>
-            <version>8.2.0</version>
-        </dependency>
-
-
         <dependency>
             <groupId>com.atguigu.gmall</groupId>
             <artifactId>service-product-client</artifactId>
             <version>1.0</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.atguigu.gmall</groupId>
+            <artifactId>service-order-client</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.atguigu.gmall</groupId>
+            <artifactId>rabbit-util</artifactId>
+            <version>1.0</version>
+        </dependency>
 
     </dependencies>
+
+    <build>
+        <finalName>service-activity</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
 
 </project>

@@ -119,7 +119,7 @@ public class AlipayController {
             //通过setnx 保证消息幂等性，如果订单
             Boolean aBoolean = redisTemplate.opsForValue().setIfAbsent(notifyId, notifyId, 1462, TimeUnit.MINUTES);
 
-            if (!aBoolean){
+            if (!aBoolean) {
                 //存入失败了，说明已经发起过异步回调了，但是修改pay订单失败了，需要支付宝继续发起异步回调
                 return "failure";
             }
@@ -156,5 +156,45 @@ public class AlipayController {
         return Result.ok(refund);
     }
 
+
+    /**
+     * 根据交易编号查询支付记录
+     *
+     * @param outTradeNo
+     * @return
+     */
+    @ResponseBody
+    @GetMapping("/getPaymentInfo/{outTradeNo}")
+    public PaymentInfo getPaymentInfo(@PathVariable String outTradeNo) {
+
+        return paymentService.getPaymentInfo(outTradeNo, PaymentType.ALIPAY);
+    }
+
+    /**
+     * 查询支付宝支付记录，是否未支付
+     *
+     * @param orderId
+     * @return
+     */
+    @ResponseBody
+    @GetMapping("/checkPayment/{orderId}")
+    public boolean checkPayment(@PathVariable Long orderId) {
+
+        return alipayService.checkPayment(orderId);
+    }
+
+
+    /**
+     * 查询支付宝支付记录，是否关闭
+     *
+     * @param orderId
+     * @return
+     */
+    @ResponseBody
+    @GetMapping("/closePay/{orderId}")
+    public boolean closePay(@PathVariable Long orderId) {
+
+        return alipayService.closePay(orderId);
+    }
 
 }

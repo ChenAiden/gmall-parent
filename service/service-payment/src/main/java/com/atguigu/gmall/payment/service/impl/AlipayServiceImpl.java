@@ -3,9 +3,13 @@ package com.atguigu.gmall.payment.service.impl;
 import com.alibaba.fastjson.JSONObject;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
+import com.alipay.api.request.AlipayTradeCloseRequest;
 import com.alipay.api.request.AlipayTradePagePayRequest;
+import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.request.AlipayTradeRefundRequest;
+import com.alipay.api.response.AlipayTradeCloseResponse;
 import com.alipay.api.response.AlipayTradePagePayResponse;
+import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.alipay.api.response.AlipayTradeRefundResponse;
 import com.atguigu.gmall.model.enums.PaymentStatus;
 import com.atguigu.gmall.model.enums.PaymentType;
@@ -105,6 +109,7 @@ public class AlipayServiceImpl implements AlipayService {
 
     /**
      * 退款
+     *
      * @param orderId
      * @return
      */
@@ -142,7 +147,7 @@ public class AlipayServiceImpl implements AlipayService {
             PaymentInfo paymentInfo = new PaymentInfo();
             paymentInfo.setPaymentStatus(PaymentStatus.CLOSED.name());
 
-            paymentService.updatePaymentInfo(orderInfo.getOutTradeNo(),PaymentType.ALIPAY.name(),paymentInfo);
+            paymentService.updatePaymentInfo(orderInfo.getOutTradeNo(), PaymentType.ALIPAY.name(), paymentInfo);
 
             return true;
         } else {
@@ -150,6 +155,86 @@ public class AlipayServiceImpl implements AlipayService {
             return false;
         }
 
+    }
+
+    /**
+     * 查询支付宝交易记录
+     * @param orderId
+     * @return
+     */
+    @Override
+    public boolean checkPayment(Long orderId) {
+        //根据orderId查询对象
+        OrderInfo orderInfo = orderFeignClient.getOrderInfo(orderId);
+
+        if (orderInfo == null) return false;
+
+//        AlipayClient alipayClient = new DefaultAlipayClient("https://openapi.alipay.com/gateway.do","app_id","your private_key","json","GBK","alipay_public_key","RSA2");
+        AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
+        JSONObject bizContent = new JSONObject();
+        bizContent.put("out_trade_no", orderInfo.getOutTradeNo());
+        //bizContent.put("trade_no", "2014112611001004680073956707");//可选
+
+        request.setBizContent(bizContent.toString());
+        AlipayTradeQueryResponse response = null;
+        try {
+            response = alipayClient.execute(request);
+        } catch (AlipayApiException e) {
+            e.printStackTrace();
+        }
+
+        if (response.isSuccess()) {
+            String tradeStatus = response.getTradeStatus();
+            if (tradeStatus.equals("WAIT_BUYER_PAY")) {
+                //交易状态：WAIT_BUYER_PAY（交易创建，等待买家付款）
+                //只有处于等待支付时才返回true
+                return true;
+            }
+            System.out.println("查询交易接口调用成功");
+        } else {
+            System.out.println("查询交易接口调用失败");
+            return false;
+        }
+
+        return false;
+    }
+
+
+    /**
+     * 查询支付宝支付记录，是否关闭
+     *
+     * @param orderId
+     * @return
+     */
+    @Override
+    public boolean closePay(Long orderId) {
+        //根据orderId查询对象
+        OrderInfo orderInfo = orderFeignClient.getOrderInfo(orderId);
+
+        if (orderInfo == null) return false;
+
+//        AlipayClient alipayClient = new DefaultAlipayClient("https://openapi.alipay.com/gateway.do","app_id","your private_key","json","GBK","alipay_public_key","RSA2");
+        AlipayTradeCloseRequest request = new AlipayTradeCloseRequest();
+        JSONObject bizContent = new JSONObject();
+
+        bizContent.put("out_trade_no", orderInfo.getOutTradeNo());
+//        bizContent.put("trade_no", "2013112611001004680073956707");//不选这个，因为没有回调成功的话没有trade_no
+
+        request.setBizContent(bizContent.toString());
+        AlipayTradeCloseResponse response = null;
+        try {
+            response = alipayClient.execute(request);
+        } catch (AlipayApiException e) {
+            e.printStackTrace();
+        }
+
+        if(response.isSuccess()){
+            System.out.println("查询支付宝支付记录关闭接口，调用成功");
+            return true;
+        } else {
+            System.out.println("查询支付宝支付记录关闭接口，调用失败");
+            return false;
+        }
     }
 
 

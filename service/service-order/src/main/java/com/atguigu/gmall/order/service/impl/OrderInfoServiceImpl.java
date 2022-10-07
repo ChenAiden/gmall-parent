@@ -203,7 +203,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
      * @param orderId
      */
     @Override
-    public void cancelOrder(Long orderId) {
+    public void cancelOrder(Long orderId,String falg) {
 
 //        OrderInfo orderInfo = new OrderInfo();
 //        orderInfo.setId(orderId);
@@ -216,6 +216,16 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
 
         //封装了方法专门修改当前订单状态
         this.updateOrder(orderId, ProcessStatus.CLOSED);
+
+
+        if (falg.equals("2")){
+
+            //修改payment状态
+            rabbitService.sendMessage(
+                    MqConst.EXCHANGE_DIRECT_PAYMENT_CLOSE,
+                    MqConst.ROUTING_PAYMENT_CLOSE,
+                    orderId);
+        }
     }
 
     @Override

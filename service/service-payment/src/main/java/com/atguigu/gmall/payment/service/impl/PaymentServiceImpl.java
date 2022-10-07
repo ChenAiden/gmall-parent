@@ -116,6 +116,12 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
+    /**
+     * 修改支付记录
+     * @param outTradeNo
+     * @param name
+     * @param paymentInfo
+     */
     public void updatePaymentInfo(String outTradeNo, String name, PaymentInfo paymentInfo) {
 
         QueryWrapper<PaymentInfo> wrapper = new QueryWrapper<>();
@@ -123,6 +129,28 @@ public class PaymentServiceImpl implements PaymentService {
         wrapper.eq("payment_type", name);
 
         paymentInfoMapper.update(paymentInfo,wrapper);
+    }
+
+
+    /**
+     * 关闭支付记录
+     * @param orderId
+     */
+    @Override
+    public void closePayment(Long orderId) {
+        //查询是否存在支付记录
+        QueryWrapper<PaymentInfo> wrapper = new QueryWrapper<>();
+        wrapper.eq("order_id",String.valueOf(orderId));
+        wrapper.eq("payment_type",PaymentType.ALIPAY);
+        PaymentInfo paymentInfo = paymentInfoMapper.selectOne(wrapper);
+
+        if (paymentInfo != null){
+            paymentInfo.setPaymentStatus(PaymentStatus.CLOSED.name());
+
+            paymentInfoMapper.updateById(paymentInfo);
+        }
+
+
     }
 
 

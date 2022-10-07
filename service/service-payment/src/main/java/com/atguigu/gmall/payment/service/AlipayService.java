@@ -10,4 +10,8 @@ public interface AlipayService {
 
     boolean refund(Long orderId);
 
+    boolean checkPayment(Long orderId);
+
+    boolean closePay(Long orderId);
+
 }
